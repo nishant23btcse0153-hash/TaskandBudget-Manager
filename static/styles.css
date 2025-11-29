@@ -1,0 +1,89 @@
+body { font-family: Arial, sans-serif; margin: 20px; }
+body { font-family: Inter, Arial, sans-serif; margin: 0; background: #f5f7fb; color: #1f2937; }
+.container { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+
+/* Top navigation */
+.topbar { display:flex; justify-content:space-between; align-items:center; padding:12px 24px; background:#ffffff; border-bottom:1px solid #e6eef6; box-shadow:0 1px 4px rgba(16,24,40,0.03); }
+.topbar .nav-left { display:flex; gap:12px; align-items:center; }
+.brand { font-weight:700; color:#0b69ff; text-decoration:none; font-size:1.15rem; margin-right:8px; }
+.topbar a { color:#374151; text-decoration:none; padding:6px 8px; border-radius:6px; }
+.topbar a:hover { background:#f3f6ff; }
+.topbar .nav-right { display:flex; gap:8px; align-items:center; }
+.user-email { font-size:0.95rem; color:#111827; margin-right:6px; }
+.inline-form { display:inline-block; margin:0; }
+
+/* Buttons */
+.btn { padding:8px 12px; border-radius:6px; background:#eef2ff; border:1px solid #e0e7ff; color:#0b69ff; cursor:pointer; text-decoration:none; }
+.btn.small { padding:6px 8px; font-size:0.85rem; }
+.btn.danger { background:#ffecec; border-color:#f5c6c6; color:#b91c1c; }
+
+/* Flash messages */
+.flash { margin:12px 0; padding:10px 14px; border-radius:8px; background:#fff7ed; border:1px solid #ffedd5; color:#92400e; }
+
+
+/* Task styles */
+.task-panel { background: #ffffff; padding: 16px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 6px 18px rgba(11,27,80,0.04); }
+.controls { margin: 12px 0; }
+.controls-form { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.controls-form select { padding:4px; }
+
+.task-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px; }
+.task-item { display:flex; justify-content:space-between; align-items:center; padding:10px; border-radius:6px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+.task-main { max-width:60%; }
+.task-title { font-weight:600; margin-bottom:4px; }
+.task-desc { color:#444; font-size:0.95em; }
+.task-meta { text-align:right; font-size:0.9em; color:#333; margin-right:12px; }
+.time-left { font-size:0.85em; color:#666; }
+.task-actions { display:flex; gap:6px; align-items:center; }
+
+.task-overdue { border-left:4px solid #c0392b; }
+.task-overdue .task-title { color:#c0392b; }
+.task-done { border-left:4px solid #27ae60; background:#f7fffb; }
+.task-done .task-title { color:#196f3d; text-decoration:line-through; }
+.task-pending { border-left:4px solid #f39c12; }
+
+.btn { padding:6px 10px; border-radius:4px; background:#eee; border:none; cursor:pointer; }
+.btn.small { padding:4px 8px; font-size:0.85em; }
+.btn.danger { background:#e74c3c; color:#fff; }
+.btn.small.danger { background:#c0392b; }
+
+form div { margin-bottom:8px; }
+input, textarea, select { padding:10px; border:1px solid #e6eef6; border-radius:8px; background:#fff; }
+
+/* Forms layout */
+form .row { display:flex; gap:12px; align-items:center; }
+form label { font-weight:600; display:block; margin-bottom:6px; }
+
+
+@media (max-width:600px) {
+	.task-main { max-width:100%; }
+	.task-meta { display:block; margin-right:0; }
+}
+
+/* Budget/Chart styles */
+.budget-panel { background:#ffffff; padding:16px; border-radius:10px; box-shadow:0 6px 18px rgba(11,27,80,0.04); }
+.chart-container { max-width:520px; margin:12px 0; }
+.summary { display:flex; gap:16px; flex-wrap:wrap; margin:8px 0; }
+.filters-form { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.filters-form input { padding:8px; }
+/* Transaction Table Styling */
+.transaction-table th {
+    text-align: left;
+    background: #f8fafc;
+}
+
+.transaction-table td,
+.transaction-table th {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.actions-cell {
+    text-align: right;
+}
+
+/* Mobile responsive scroll */
+.table-wrapper {
+    overflow-x: auto;
+    border-radius: 10px;
+}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+
+        <h2 class="auth-title">Create Account</h2>
+        <p class="auth-subtitle">Join TaskBudget Manager today</p>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <div class="auth-group">
+                {{ form.email.label(class="auth-label") }}
+                {{ form.email(class="auth-input") }}
+            </div>
+
+            <div class="auth-group">
+                {{ form.password.label(class="auth-label") }}
+                {{ form.password(class="auth-input") }}
+            </div>
+
+            <div class="auth-group">
+                {{ form.confirm.label(class="auth-label") }}
+                {{ form.confirm(class="auth-input") }}
+            </div>
+
+            <div class="auth-group">
+                {{ form.currency.label(class="auth-label") }}
+                {{ form.currency(class="auth-input") }}
+            </div>
+
+            <button class="auth-btn">Register</button>
+
+            <p class="auth-switch">
+                Already have an account?  
+                <a href="{{ url_for('login') }}">Login</a>
+            </p>
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* Reuse same CSS as login page */
+.auth-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 60px;
+}
+.auth-card {
+    width: 380px;
+    background: white;
+    padding: 32px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+}
+.auth-title {
+    font-size: 26px;
+    font-weight: 800;
+    margin-bottom: 6px;
+    text-align: center;
+}
+.auth-subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 25px;
+}
+.auth-group {
+    margin-bottom: 18px;
+}
+.auth-label {
+    font-weight: 600;
+}
+.auth-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    margin-top: 4px;
+}
+.auth-btn {
+    width: 100%;
+    padding: 12px;
+    background: #059669;
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+.auth-btn:hover {
+    background: #047857;
+}
+.auth-switch {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 0.92rem;
+}
+.auth-switch a {
+    color: #059669;
+    text-decoration: none;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

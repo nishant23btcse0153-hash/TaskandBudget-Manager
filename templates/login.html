@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+
+        <h2 class="auth-title">Welcome Back</h2>
+        <p class="auth-subtitle">Login to continue</p>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <div class="auth-group">
+                {{ form.email.label(class="auth-label") }}
+                {{ form.email(class="auth-input") }}
+            </div>
+
+            <div class="auth-group">
+                {{ form.password.label(class="auth-label") }}
+                {{ form.password(class="auth-input") }}
+            </div>
+
+            <button class="auth-btn">Login</button>
+
+            <p class="auth-switch">
+                Don’t have an account?  
+                <a href="{{ url_for('register') }}">Create one</a>
+            </p>
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+.auth-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 60px;
+}
+.auth-card {
+    width: 380px;
+    background: white;
+    padding: 32px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+}
+.auth-title {
+    font-size: 26px;
+    font-weight: 800;
+    margin-bottom: 6px;
+    text-align: center;
+}
+.auth-subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 25px;
+}
+.auth-group {
+    margin-bottom: 18px;
+}
+.auth-label {
+    font-weight: 600;
+}
+.auth-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    margin-top: 4px;
+}
+.auth-btn {
+    width: 100%;
+    padding: 12px;
+    background: #059669;
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+.auth-btn:hover {
+    background: #047857;
+}
+.auth-switch {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 0.92rem;
+}
+.auth-switch a {
+    color: #059669;
+    text-decoration: none;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

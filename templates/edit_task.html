@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit Task</h2>
+
+<form method="POST">
+    {{ form.hidden_tag() }}
+
+    <div>
+        {{ form.title.label }}<br>
+        {{ form.title(size=40, class="input") }}
+    </div>
+
+    <div>
+        {{ form.description.label }}<br>
+        {{ form.description(rows=4, cols=40, class="input") }}
+    </div>
+
+    <div>
+    {{ form.deadline.label }}<br>
+    {{ form.deadline(class="input", required=True) }}
+</div>
+
+
+    <br>
+
+    {{ form.submit(class="btn primary") }}
+    <a href="{{ url_for('tasks') }}" class="btn secondary">Cancel</a>
+</form>
+
+{% endblock %}

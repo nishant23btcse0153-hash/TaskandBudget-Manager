@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="page-title">TASK MANAGEMENT</h1>
+
+<div class="task-panel">
+
+    <!-- ADD TASK -->
+    <h2 class="section-title">Create a New Task</h2>
+
+    <form method="POST" action="{{ url_for('create_task') }}" class="form-box">
+        {{ form.hidden_tag() }}
+
+        <div class="form-row">
+            <div class="form-group">
+                {{ form.title.label(class="label") }}
+                {{ form.title(class="input", size=40) }}
+            </div>
+
+            <div class="form-group">
+                {{ form.deadline.label(class="label") }}
+                {{ form.deadline(class="input", required=True) }}
+            </div>
+        </div>
+
+        <div class="form-group">
+            {{ form.description.label(class="label") }}
+            {{ form.description(class="input", rows=3) }}
+        </div>
+
+        <button class="btn primary large">Add Task</button>
+    </form>
+
+
+    <!-- FILTERS -->
+    <h2 class="section-title">Filter Tasks</h2>
+
+    <form method="GET" class="filter-row">
+
+        <div class="form-group">
+            <label class="label">Status</label>
+            <select name="filter" class="input">
+                <option value="all" {% if request.args.get('filter','all')=='all' %}selected{% endif %}>All</option>
+                <option value="pending" {% if request.args.get('filter')=='pending' %}selected{% endif %}>Pending</option>
+                <option value="done" {% if request.args.get('filter')=='done' %}selected{% endif %}>Completed</option>
+                <option value="overdue" {% if request.args.get('filter')=='overdue' %}selected{% endif %}>Overdue</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="label">Sort</label>
+            <select name="sort" class="input">
+                <option value="" {% if request.args.get('sort','')=='' %}selected{% endif %}>Nearest Deadline</option>
+                <option value="new" {% if request.args.get('sort')=='new' %}selected{% endif %}>Furthest Deadline</option>
+                <option value="old" {% if request.args.get('sort')=='old' %}selected{% endif %}>Closest Deadline</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn primary large">Apply</button>
+    </form>
+
+
+    <!-- TASK LIST -->
+    <h2 class="section-title">Your Tasks</h2>
+
+    {% if tasks %}
+        <div class="task-list">
+            {% for t in tasks %}
+
+                {% if t.status == 'done' %}
+                    {% set border_class = "task-done" %}
+                {% elif t.is_overdue %}
+                    {% set border_class = "task-overdue" %}
+                {% else %}
+                    {% set border_class = "task-pending" %}
+                {% endif %}
+
+                <div class="task-card {{ border_class }}" data-task-id="{{ t.id }}">
+
+                    <!-- LEFT SIDE -->
+                    <div class="task-info">
+                        <div class="task-title">{{ t.title }}</div>
+                        <div class="task-desc">{{ t.description or '' }}</div>
+                    </div>
+
+                    <!-- MIDDLE -->
+                    <div class="task-meta">
+                        <div><strong>Due:</strong> {{ t.deadline.strftime('%Y-%m-%d %H:%M') }}</div>
+
+                        {# pill color: overdue gets its own style, otherwise based on status #}
+                        <div class="status-pill {% if t.is_overdue %}overdue{% else %}{{ t.status }}{% endif %}">
+                            {% if t.is_overdue %}
+                                Overdue
+                            {% else %}
+                                {{ t.status|capitalize }}
+                            {% endif %}
+                        </div>
+
+                        {% if t.time_left %}
+                            <div class="meta-small">{{ t.time_left }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- RIGHT SIDE -->
+                    <div class="task-actions">
+
+                        <!-- MARK DONE / MARK PENDING -->
+                        <form method="POST" action="{{ url_for('toggle_task', task_id=t.id) }}">
+                            {% if t.status == 'done' %}
+                                <button class="btn yellow small">Mark Pending</button>
+                            {% else %}
+                                <button class="btn green small">Mark Done</button>
+                            {% endif %}
+                        </form>
+
+                        <a class="btn blue small" href="{{ url_for('edit_task', task_id=t.id) }}">Edit</a>
+
+                        <form method="POST"
+                              action="{{ url_for('delete_task', task_id=t.id) }}"
+                              onsubmit="return confirm('Are you sure you want to delete this task?');">
+                            <button class="btn red small">Delete</button>
+                        </form>
+
+                    </div>
+                </div>
+
+            {% endfor %}
+        </div>
+
+    {% else %}
+        <p>No tasks yet.</p>
+    {% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<style>
+
+.page-title {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 25px;
+    color: #111;
+}
+
+.section-title {
+    font-size: 24px;
+    margin-top: 35px;
+    margin-bottom: 12px;
+    font-weight: 700;
+    color: #064e3b;
+}
+
+/* FORM */
+.form-box {
+    background: #f9fafb;
+    padding: 18px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.label {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+}
+
+/* BUTTONS */
+.btn {
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    font-weight: 600;
+}
+
+.primary {
+    background: #059669;
+    color: white;
+}
+
+.green {
+    background: #10b981;
+    color: white;
+}
+
+.yellow {
+    background: #fbbf24;
+    color: white;
+}
+
+.blue {
+    background: #3b82f6;
+    color: white;
+}
+
+.red {
+    background: #dc2626;
+    color: white;
+}
+
+.small {
+    padding: 6px 10px;
+}
+
+.large {
+    height: 43px;
+}
+
+/* FILTER */
+.filter-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 20px;
+}
+
+/* TASK CARDS */
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.task-card {
+    background: white;
+    padding: 16px;
+    border-radius: 10px;
+    display: flex;
+    gap: 20px;
+    border-left: 6px solid transparent;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    flex-wrap: wrap;
+}
+
+.task-pending {
+    border-color: #fbbf24;
+}
+
+.task-done {
+    border-color: #10b981;
+}
+
+.task-overdue {
+    border-color: #dc2626;
+}
+
+.task-info {
+    flex: 2;
+}
+
+.task-title {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.task-desc {
+    margin-top: 4px;
+    color: #444;
+}
+
+.task-meta {
+    flex: 1;
+    min-width: 160px;
+}
+
+.meta-small {
+    margin-top: 5px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.task-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* STATUS PILL */
+.status-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-top: 6px;
+}
+
+.status-pill.pending {
+    background: #fde68a;
+    color: #92400e;
+}
+
+.status-pill.done {
+    background: #bbf7d0;
+    color: #065f46;
+}
+
+.status-pill.overdue {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+</style>
+
+{% endblock %}

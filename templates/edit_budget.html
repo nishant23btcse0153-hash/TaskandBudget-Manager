@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit Transaction</h2>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <div>
+        {{ form.category.label }}<br>
+        {{ form.category() }}
+    </div>
+    <div>
+        {{ form.amount.label }}<br>
+        {{ form.amount(step="0.01") }}
+    </div>
+    <div>
+        {{ form.type.label }}<br>
+        {{ form.type() }}
+    </div>
+    <div>
+        {{ form.date.label }}<br>
+        {{ form.date() }}
+
+    </div>
+    <div>
+        {{ form.submit() }}
+        <a href="{{ url_for('budgets') }}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

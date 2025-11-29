@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="page-title">DASHBOARD OVERVIEW</h1>
+
+<!-- SUMMARY SECTION -->
+<div class="summary-section">
+
+    <div class="summary-card">
+        <div class="label">Total Tasks</div>
+        <div class="value">{{ total_tasks }}</div>
+    </div>
+
+    <div class="summary-card">
+        <div class="label">Completed</div>
+        <div class="value green">{{ completed_tasks }}</div>
+    </div>
+
+    <div class="summary-card">
+        <div class="label">Pending</div>
+        <div class="value amber">{{ pending_tasks }}</div>
+    </div>
+
+    <div class="summary-card">
+        <div class="label">Overdue</div>
+        <div class="value red">{{ overdue_tasks }}</div>
+    </div>
+
+</div>
+
+<!-- FINANCE SUMMARY -->
+<div class="summary-section">
+
+    <div class="summary-card">
+        <div class="label">Total Income</div>
+        <div class="value green">
+            {{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(total_income) }}
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="label">Total Expenses</div>
+        <div class="value red">
+            {{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(total_expense) }}
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="label">Balance</div>
+        <div class="value">
+            {{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(balance) }}
+        </div>
+    </div>
+
+</div>
+
+
+<!-- CHARTS SECTION -->
+<h2 class="section-title">Visual Overview</h2>
+
+<div class="charts-wrapper">
+
+    <!-- TASK PIE -->
+    <div class="chart-box">
+        <h3 class="chart-heading">Task Distribution</h3>
+        <canvas id="taskChart"></canvas>
+    </div>
+
+    <!-- FINANCE BAR -->
+    <div class="chart-box">
+        <h3 class="chart-heading">Income vs Expenses</h3>
+        <canvas id="financeChart"></canvas>
+    </div>
+
+</div>
+
+
+<!-- TASKS DUE SOON -->
+<h2 class="section-title">Tasks Due in the Next 24 Hours</h2>
+
+<div class="due-card">
+    {% if due_soon %}
+        <ul class="task-list">
+        {% for t in due_soon %}
+            <li class="task-item">
+                <div>
+                    <div class="task-title">{{ t.title }}</div>
+                    <div class="task-desc">{{ t.description or '' }}</div>
+                </div>
+                <div class="task-meta">
+                    <div>Due: {{ t.deadline.strftime('%Y-%m-%d %H:%M') }}</div>
+                    <div class="soon">Due Soon</div>
+                </div>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty">No tasks due within 24 hours 🎉</p>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+/* Page Title */
+.page-title {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 25px;
+    color: #111;
+}
+
+/* Summary Boxes */
+.summary-section {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.summary-card {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 15px 20px;
+    min-width: 180px;
+    flex: 1;
+    border-left: 6px solid #10b981;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.summary-card .label {
+    color: #374151;
+    font-weight: 600;
+}
+
+.summary-card .value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-top: 5px;
+}
+
+.value.green { color: #059669; }
+.value.red { color: #dc2626; }
+.value.amber { color: #d97706; }
+
+/* Section Titles */
+.section-title {
+    margin-top: 35px;
+    margin-bottom: 15px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #064e3b;
+}
+
+/* Charts Layout */
+.charts-wrapper {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.chart-box {
+    flex: 1;
+    min-width: 300px;
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+}
+
+.chart-heading {
+    font-size: 18px;
+    margin-bottom: 12px;
+    font-weight: 700;
+    color: #065f46;
+}
+
+/* Due soon card */
+.due-card {
+    background: #f0fdf4;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #bbf7d0;
+}
+
+.task-list {
+    list-style: none;
+    padding: 0;
+}
+
+.task-item {
+    padding: 14px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+}
+
+.task-title {
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.task-desc {
+    color: #555;
+}
+
+.task-meta {
+    text-align: right;
+}
+
+.soon {
+    color: #d97706;
+    font-weight: 700;
+}
+
+.empty {
+    font-size: 1rem;
+    color: #444;
+    font-weight: 500;
+}
+
+/* Responsive */
+@media(max-width: 640px){
+    .charts-wrapper {
+        flex-direction: column;
+    }
+}
+
+</style>
+
+<script>
+const taskData = {{ task_chart_data | tojson }};
+const financeData = {{ finance_chart_data | tojson }};
+
+/* TASK PIE */
+new Chart(document.getElementById('taskChart'), {
+    type: 'pie',
+    data: {
+        labels: taskData.labels,
+        datasets: [{
+            data: taskData.values,
+            backgroundColor: ['#facc15', '#22c55e', '#ef4444']
+        }]
+    },
+    options:{
+        plugins: { legend:{ position:'bottom' } },
+        responsive:true
+    }
+});
+
+/* FINANCE BAR */
+new Chart(document.getElementById('financeChart'), {
+    type: 'bar',
+    data: {
+        labels: financeData.labels,
+        datasets: [{
+            data: financeData.values,
+            backgroundColor: ['#059669', '#dc2626'],
+            borderRadius: 12,
+            borderSkipped: false
+        }]
+    },
+    options:{
+        plugins:{ legend:{ display:false } },
+        responsive:true,
+        scales:{ y:{ beginAtZero:true } }
+    }
+});
+</script>
+
+{% endblock %}

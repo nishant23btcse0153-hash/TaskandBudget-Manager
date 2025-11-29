@@ -1,0 +1,480 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="page-title">BUDGET MANAGEMENT</h1>
+
+<div class="budget-panel">
+
+    <!-- ADD TRANSACTION -->
+    <h2 class="section-title">Add a New Transaction</h2>
+
+    <form method="POST" action="{{ url_for('create_budget') }}" class="form-box">
+        {{ form.hidden_tag() }}
+
+        <div class="form-row">
+            <div class="form-group">
+                {{ form.category.label(class="label") }}
+                {{ form.category(class="input") }}
+            </div>
+
+            <div class="form-group">
+                <label id="custom-cat-label" class="label" style="display:none;">Custom Category</label>
+                <input id="custom-cat" name="custom_category" type="text" class="input"
+                       placeholder="Enter custom category" style="display:none;">
+            </div>
+
+            <div class="form-group">
+                {{ form.amount.label(class="label") }}
+                {{ form.amount(step="0.01", class="input") }}
+            </div>
+
+            <div class="form-group">
+                {{ form.type.label(class="label") }}
+                {{ form.type(class="input") }}
+            </div>
+
+            <div class="form-group">
+                {{ form.date.label(class="label") }}
+                <input type="date" name="date" class="input">
+            </div>
+        </div>
+
+        <button class="btn primary large">Add Transaction</button>
+    </form>
+
+
+    <!-- SUMMARY -->
+    <h2 class="section-title">Your Summary</h2>
+
+    <div class="summary-grid">
+        <div class="summary-box">
+            <div class="label">Total Income</div>
+            <div class="value">{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(incomes) }}</div>
+        </div>
+
+        <div class="summary-box">
+            <div class="label">Total Expenses</div>
+            <div class="value">{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(expenses) }}</div>
+        </div>
+
+        <div class="summary-box">
+            <div class="label">Balance</div>
+            <div class="value balance">{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(balance) }}</div>
+        </div>
+    </div>
+
+
+    <!-- FILTERS -->
+    <h2 class="section-title">Filter Transactions</h2>
+
+    <form method="GET" class="filter-row">
+
+        <div class="form-group">
+            <label class="label">From</label>
+            <input type="date" name="from_date" class="input"
+                   value="{{ request.args.get('from_date','') }}">
+        </div>
+
+        <div class="form-group">
+            <label class="label">To</label>
+            <input type="date" name="to_date" class="input"
+                   value="{{ request.args.get('to_date','') }}">
+        </div>
+
+        <button type="submit" class="btn primary large">Apply</button>
+
+        <!-- Download dropdown -->
+        <div class="download-container">
+            <button type="button" class="btn secondary large" id="downloadBtn">
+                Download ▼
+            </button>
+
+            <div id="downloadMenu" class="download-menu">
+                <a href="{{ url_for('export_budgets',
+                        from_date=request.args.get('from_date',''),
+                        to_date=request.args.get('to_date',''),
+                        format='csv') }}">
+                    Export as CSV
+                </a>
+                <a href="{{ url_for('export_budgets',
+                        from_date=request.args.get('from_date',''),
+                        to_date=request.args.get('to_date',''),
+                        format='xlsx') }}">
+                    Export as Excel
+                </a>
+            </div>
+        </div>
+
+    </form>
+
+
+    <!-- CATEGORY ANALYSIS -->
+    <h2 class="section-title">Spending by Category</h2>
+
+    {% if breakdown %}
+    <div class="chart-flex">
+
+        <div class="chart-card">
+            <canvas id="categoryPie"></canvas>
+        </div>
+
+        <div class="legend-card">
+            <h3 class="legend-title">Categories</h3>
+            <ul id="chartLegend"></ul>
+        </div>
+
+        <div class="chart-card">
+            <canvas id="expenseBar"></canvas>
+        </div>
+
+    </div>
+    {% else %}
+    <p>No category data available.</p>
+    {% endif %}
+
+
+    <!-- TABLE -->
+    <h2 class="section-title">Your Transaction History</h2>
+
+    {% if transactions %}
+    <div class="table-wrapper">
+        <table class="transaction-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td>{{ t.date.strftime('%Y-%m-%d') if t.date else '' }}</td>
+                    <td>{{ t.category }}</td>
+                    <td>{{ t.type }}</td>
+                    <td>{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(t.amount) }}</td>
+                    <td>
+                        <form method="POST"
+                              action="{{ url_for('delete_budget', bud_id=t.id) }}"
+                              onsubmit="return confirm('Delete this transaction?');">
+                            <button class="btn danger small">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+    {% else %}
+    <p>No transactions yet.</p>
+    {% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+/* HEADINGS */
+.page-title {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 25px;
+    color: #111;
+}
+
+.section-title {
+    font-size: 24px;
+    margin-top: 35px;
+    margin-bottom: 12px;
+    font-weight: 700;
+    color: #064e3b;
+}
+
+
+/* FORM */
+.form-box {
+    background: #f9fafb;
+    padding: 18px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.form-group {
+    flex: 1;
+    min-width: 160px;
+}
+
+.label {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+}
+
+
+/* BUTTONS */
+.btn {
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    font-weight: 600;
+}
+
+.primary {
+    background: #059669;
+    color: white;
+}
+
+.secondary {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+}
+
+.large {
+    height: 43px;
+}
+
+.danger {
+    background: #dc2626;
+    color: white;
+}
+
+
+/* SUMMARY */
+.summary-grid {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.summary-box {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    padding: 15px;
+    border-radius: 8px;
+    width: 170px;
+}
+
+.summary-box .value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #065f46;
+}
+
+
+
+/* FILTERS */
+.filter-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+/* DOWNLOAD */
+.download-container {
+    position: relative;
+}
+
+.download-menu {
+    display:none;
+    position:absolute;
+    top:46px;
+    right:0;
+    background:white;
+    border:1px solid #ccc;
+    border-radius:8px;
+    min-width:160px;
+    box-shadow:0px 4px 10px rgba(0,0,0,0.1);
+}
+
+.download-menu a {
+    padding:10px;
+    display:block;
+    text-decoration:none;
+    color:#111;
+}
+
+.download-menu a:hover {
+    background:#f3f4f6;
+}
+
+
+
+/* CHARTS */
+.chart-flex {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.chart-card {
+    flex: 1;
+    min-width: 250px;
+    max-width: 350px;
+    height: 270px;
+}
+
+.legend-card {
+    min-width: 170px;
+}
+
+.legend-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+#chartLegend li {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+#chartLegend span {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    margin-right: 8px;
+}
+
+
+/* TABLE */
+.transaction-table th {
+    background: #f3f4f6;
+}
+
+.transaction-table td,
+.transaction-table th {
+    padding: 14px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+
+    /* Custom Category */
+    const sel = document.querySelector('select[name="category"]');
+    const custom = document.getElementById('custom-cat');
+    const customLabel = document.getElementById('custom-cat-label');
+
+    function toggleCustom(){
+        if(sel.value === 'Other'){
+            custom.style.display = 'block';
+            customLabel.style.display = 'block';
+        } else {
+            custom.style.display = 'none';
+            customLabel.style.display = 'none';
+        }
+    }
+    sel.addEventListener("change", toggleCustom);
+    toggleCustom();
+
+
+    /* DOWNLOAD MENU */
+    const btn = document.getElementById("downloadBtn");
+    const menu = document.getElementById("downloadMenu");
+
+    btn.addEventListener("click", () => {
+        menu.style.display = menu.style.display === "block" ? "none" : "block";
+    });
+
+    document.addEventListener("click", e => {
+        if (!btn.contains(e.target) && !menu.contains(e.target)) {
+            menu.style.display = "none";
+        }
+    });
+
+
+    /* CHARTS */
+    const breakdownAll = {{ breakdown | tojson | safe }};
+    const breakdownExpenses = {{ breakdown_expenses | tojson | safe }};
+
+    if(breakdownAll){
+
+        const colors = [
+            '#059669','#10b981','#34d399','#6ee7b7','#a7f3d0',
+            '#d1fae5','#064e3b','#065f46','#047857','#0d9488'
+        ];
+
+        /* PIE */
+        const pieLabels = breakdownAll.map(x => x[0]);
+        const pieData = breakdownAll.map(x => x[1]);
+
+        new Chart(document.getElementById("categoryPie"), {
+            type: "pie",
+            data: {
+                labels: pieLabels,
+                datasets: [{
+                    data: pieData,
+                    backgroundColor: colors.slice(0, pieLabels.length)
+                }]
+            },
+            options: { 
+                responsive:true, 
+                maintainAspectRatio:false,
+                plugins:{ legend:{ display:false } }
+            }
+        });
+
+        /* BAR (rounded) */
+        const expLabels = breakdownExpenses.map(x => x[0]);
+        const expData = breakdownExpenses.map(x => x[1]);
+
+        new Chart(document.getElementById("expenseBar"), {
+            type: "bar",
+            data: {
+                labels: expLabels,
+                datasets: [{
+                    data: expData,
+                    backgroundColor: colors.slice(0, expLabels.length),
+                    borderRadius: 12,
+                    borderSkipped: false
+                }]
+            },
+            options:{
+                responsive:true, 
+                maintainAspectRatio:false,
+                scales:{ y:{ beginAtZero:true } },
+                plugins:{ legend:{ display:false } }
+            }
+        });
+
+        /* Legend */
+        const legend = document.getElementById("chartLegend");
+        pieLabels.forEach((label,i)=>{
+            const item = document.createElement("li");
+            item.innerHTML = `
+                <span style="background:${colors[i]}"></span>
+                ${label}
+            `;
+            legend.appendChild(item);
+        });
+    }
+});
+</script>
+{% endblock %}
+	

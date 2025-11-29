@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TaskBudget Manager</title>
+
+    <!-- Responsive meta -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+
+    <header>
+        <nav class="topbar">
+            <div class="nav-left">
+    <a class="brand" href="{{ url_for('dashboard') }}">TaskBudget</a>
+
+    {% if current_user.is_authenticated %}
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('tasks') }}">Tasks</a>
+        <a href="{{ url_for('budgets') }}">Budgets</a>
+    {% endif %}
+</div>
+
+
+            <div class="nav-right">
+                {% if current_user.is_authenticated %}
+                    <span class="user-email">{{ current_user.email }}</span>
+
+                   
+                      
+
+                    <a class="btn small" href="{{ url_for('logout') }}">Logout</a>
+
+                {% else %}
+                    <a class="btn" href="{{ url_for('login') }}">Login</a>
+                    <a class="btn" href="{{ url_for('register') }}">Register</a>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
+
+
+    <main class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+
+    </main>
+
+    {% block scripts %}{% endblock %}
+
+</body>
+</html>
