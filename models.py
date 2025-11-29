@@ -23,6 +23,7 @@ def create_models(db):
         title = db.Column(db.String(100), nullable=False)
         description = db.Column(db.Text, nullable=True)
         deadline = db.Column(db.DateTime, nullable=False)
+        priority = db.Column(db.String(10), default='Medium')
         status = db.Column(db.String(20), default='pending')
         created_at = db.Column(db.DateTime, default=datetime.utcnow)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -67,10 +68,26 @@ def create_models(db):
                 "title": self.title,
                 "description": self.description or "",
                 "deadline": deadline_value,
+                "priority": self.priority or 'Medium',
+                "tags": [t.name for t in getattr(self, 'tags_rel', [])],
                 "status": self.status,
                 "is_overdue": is_overdue,
                 "time_left": time_left
             }
+
+    # Association table for many-to-many Task <-> Tag
+    task_tag = db.Table(
+        'task_tag',
+        db.Column('task_id', db.Integer, db.ForeignKey('task.id'), primary_key=True),
+        db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True),
+    )
+
+    class Tag(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.String(100), unique=True, nullable=False)
+
+    # add relationship on Task dynamically to avoid name conflict
+    Task.tags_rel = db.relationship('Tag', secondary=task_tag, backref=db.backref('tasks', lazy='dynamic'))
 
     # -----------------------
     # BUDGET MODEL
@@ -84,4 +101,4 @@ def create_models(db):
         date = db.Column(db.DateTime, default=datetime.utcnow)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    return User, Task, Budget
+    return User, Task, Budget, Tag

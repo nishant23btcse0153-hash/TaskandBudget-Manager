@@ -13,7 +13,7 @@ from config import Config
 from forms import LoginForm, RegisterForm, TaskForm, BudgetForm
 
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import case
+from sqlalchemy import case, func, or_
 import requests
 import time
 import csv
@@ -89,7 +89,7 @@ login_manager.login_view = "login"
 
 from models import create_models
 
-User, Task, Budget = create_models(db)
+User, Task, Budget, Tag = create_models(db)
 
 
 @login_manager.user_loader
@@ -247,6 +247,8 @@ def tasks():
 
     flt = request.args.get("filter", "all")
     sort = request.args.get("sort", "")
+    priority_flt = request.args.get("priority", "")
+    tag_search = request.args.get("tag", "").strip()
 
     q = Task.query.filter_by(user_id=current_user.id)
 
@@ -259,17 +261,27 @@ def tasks():
     elif flt == "overdue":
         q = q.filter(Task.deadline < now, Task.status != "done")
 
-    # Sort rules
+    # Priority filter (if provided)
+    if priority_flt:
+        q = q.filter(Task.priority == priority_flt)
+
+    # Tag filter (exact-token matching, require tasks to have ALL tokens)
+    if tag_search:
+        # support comma-separated tokens (require all tokens to match)
+        tokens = [t.strip() for t in tag_search.split(',') if t.strip()]
+        if tokens:
+            # perform a join to tags, filter tag names to the token set (case-insensitive),
+            # group by task and require the number of distinct matched tags >= number of tokens
+            lower_tokens = [t.lower() for t in tokens]
+            q = q.join(Task.tags_rel).filter(func.lower(Tag.name).in_(lower_tokens))
+            q = q.group_by(Task.id).having(func.count(func.distinct(Tag.id)) >= len(tokens))
+
+    # Sort rules: only two supported values
     if sort == "new":
         q = q.order_by(Task.deadline.desc())
-    elif sort == "old":
-        q = q.order_by(Task.deadline.asc())
     else:
-        # pending first, then nearest deadline
-        q = q.order_by(
-            case((Task.status == "pending", 0), else_=1),
-            Task.deadline,
-        )
+        # default / 'old' -> oldest (asc)
+        q = q.order_by(Task.deadline.asc())
 
     tasks_list = q.all()
 
@@ -294,7 +306,13 @@ def tasks():
             sec = int(delta.total_seconds())
             t.time_left = f"{sec//86400}d {(sec%86400)//3600}h {(sec%3600)//60}m left"
 
-    return render_template("task_management.html", form=form, tasks=tasks_list)
+        # Normalize tags for templates (use normalized relationship if available)
+        try:
+            t._tags_list = [tag.name for tag in getattr(t, 'tags_rel', [])]
+        except Exception:
+            t._tags_list = []
+
+    return render_template("task_management.html", form=form, tasks=tasks_list, priority_filter=priority_flt, tag_search=tag_search)
 
 
 # -------------------------------------------------
@@ -318,10 +336,23 @@ def create_task():
         title=form.title.data,
         description=form.description.data,
         deadline=dt,
+        priority=form.priority.data,
         user_id=current_user.id,
     )
 
     db.session.add(task)
+    # handle tags: parse, create/get Tag rows, associate
+    tags_raw = (form.tags.data or '').strip()
+    if tags_raw:
+        names = [t.strip() for t in tags_raw.split(',') if t.strip()]
+        for name in names:
+            tag = Tag.query.filter(Tag.name.ilike(name)).first()
+            if not tag:
+                tag = Tag(name=name)
+                db.session.add(tag)
+                db.session.flush()
+            task.tags_rel.append(tag)
+
     db.session.commit()
 
     flash("Task created successfully.", "success")
@@ -393,6 +424,19 @@ def edit_task(task_id):
         task.title = form.title.data
         task.description = form.description.data
         task.deadline = dt
+        task.priority = form.priority.data
+        # update tags: clear existing and re-add
+        task.tags_rel.clear()
+        tags_raw = (form.tags.data or '').strip()
+        if tags_raw:
+            names = [t.strip() for t in tags_raw.split(',') if t.strip()]
+            for name in names:
+                tag = Tag.query.filter(Tag.name.ilike(name)).first()
+                if not tag:
+                    tag = Tag(name=name)
+                    db.session.add(tag)
+                    db.session.flush()
+                task.tags_rel.append(tag)
 
         db.session.commit()
 
@@ -404,6 +448,10 @@ def edit_task(task_id):
         form.title.data = task.title
         form.description.data = task.description
         form.deadline.data = task.deadline
+        form.priority.data = task.priority
+        # Pre-fill tags as comma-separated string
+        existing_tags = ', '.join([tag.name for tag in task.tags_rel])
+        form.tags.data = existing_tags
 
     return render_template("edit_task.html", form=form, task=task)
 
@@ -471,6 +519,21 @@ def budgets():
         breakdown_expenses=breakdown_expenses_list,  # <- avoids Undefined in JS
         currency=user_cur,
     )
+
+
+# -------------------------------------------------
+# TAG SUGGESTIONS (AJAX)
+# -------------------------------------------------
+@app.route('/tags/suggest')
+@login_required
+def suggest_tags():
+    q = request.args.get('q', '').strip()
+    if q:
+        tags = Tag.query.filter(Tag.name.ilike(f"{q}%")).order_by(Tag.name).limit(50).all()
+    else:
+        tags = Tag.query.order_by(Tag.name).limit(50).all()
+
+    return jsonify([t.name for t in tags])
 
 
 # -------------------------------------------------

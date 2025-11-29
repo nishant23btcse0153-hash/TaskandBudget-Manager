@@ -28,6 +28,10 @@ class TaskForm(FlaskForm):
         validators=[DataRequired()]
     )
 
+    priority = SelectField('Priority', choices=[('Low','Low'), ('Medium','Medium'), ('High','High')], default='Medium')
+
+    tags = StringField('Tags (comma-separated)', validators=[Length(max=200)])
+
     submit = SubmitField('Save Task')
 
 

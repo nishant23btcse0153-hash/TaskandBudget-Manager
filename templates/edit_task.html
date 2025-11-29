@@ -20,6 +20,17 @@
     {{ form.deadline(class="input", required=True) }}
 </div>
 
+    <div>
+        {{ form.priority.label }}<br>
+        {{ form.priority(class="input") }}
+    </div>
+
+    <div>
+        {{ form.tags.label }}<br>
+        {{ form.tags(class="input", placeholder="tag1, tag2", id='tags-input-edit', list='tag-suggestions-edit') }}
+        <datalist id="tag-suggestions-edit"></datalist>
+    </div>
+
 
     <br>
 
