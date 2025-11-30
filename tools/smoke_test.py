@@ -5,7 +5,7 @@ from app import app, db, User, Task, Tag
 
 
 def run():
-    app.config['WTF_CSRF_ENABLED'] = False
+    app.config['WTF_CSRF_ENABLED'] = False``
 
     with app.app_context():
         # create or get test user
