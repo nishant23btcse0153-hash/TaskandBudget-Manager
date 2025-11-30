@@ -1,0 +1,28 @@
+<div class="ajax-edit-form">
+    <form id="ajax-edit-budget-form" method="POST" action="{{ url_for('edit_budget', bud_id=bud.id) }}">
+        {{ form.hidden_tag() }}
+        <input type="hidden" name="next" value="{{ request.args.get('next','') }}">
+
+        <div>
+            {{ form.category.label }}<br>
+            {{ form.category(class="input") }}
+        </div>
+        <div>
+            {{ form.amount.label }}<br>
+            {{ form.amount(step="0.01", class="input") }}
+        </div>
+        <div>
+            {{ form.type.label }}<br>
+            {{ form.type(class="input") }}
+        </div>
+        <div>
+            {{ form.date.label }}<br>
+            {{ form.date(class="input") }}
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:8px; align-items:center">
+            {{ form.submit(class="btn primary") }}
+            <button type="button" class="btn secondary" id="ajax-edit-cancel">Cancel</button>
+        </div>
+    </form>
+</div>

@@ -3,6 +3,7 @@
 <h2>Edit Transaction</h2>
 <form method="POST">
     {{ form.hidden_tag() }}
+    <input type="hidden" name="next" value="{{ request.args.get('next','') }}">
     <div>
         {{ form.category.label }}<br>
         {{ form.category() }}

@@ -246,7 +246,8 @@ new Chart(document.getElementById('taskChart'), {
         labels: taskData.labels,
         datasets: [{
             data: taskData.values,
-            backgroundColor: ['#facc15', '#22c55e', '#ef4444']
+            // Pending (yellow), Completed (blue), Overdue (red)
+            backgroundColor: ['#facc15', '#2563eb', '#ef4444']
         }]
     },
     options:{
@@ -262,7 +263,8 @@ new Chart(document.getElementById('financeChart'), {
         labels: financeData.labels,
         datasets: [{
             data: financeData.values,
-            backgroundColor: ['#059669', '#dc2626'],
+            // Income (blue), Expenses (red)
+            backgroundColor: ['#2563eb', '#ef4444'],
             borderRadius: 12,
             borderSkipped: false
         }]

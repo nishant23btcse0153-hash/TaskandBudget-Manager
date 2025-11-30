@@ -1,0 +1,73 @@
+{% if transactions %}
+{% set _nxt = request.full_path.replace('ajax=1','') %}
+{% if _nxt.endswith('?') or _nxt.endswith('&') %}
+    {% set _nxt = _nxt[:-1] %}
+{% endif %}
+<div class="table-header-row">
+    <div>Showing {{ ((page-1)*per_page)+1 if total_count>0 else 0 }} - {{ ((page-1)*per_page)+transactions|length }} of {{ total_count }} transactions</div>
+    <div class="pagination-controls">
+        {% if page > 1 %}
+            <a class="btn secondary small ajax-page" href="{{ url_for('budgets', from_date=request.args.get('from_date',''), to_date=request.args.get('to_date',''), page=page-1) }}">◀ Prev</a>
+        {% endif %}
+
+        {% for p in range(1, total_pages+1) %}
+            {% if p == page %}
+                <span class="btn primary small" style="pointer-events:none">{{ p }}</span>
+            {% else %}
+                <a class="btn secondary small ajax-page" href="{{ url_for('budgets', from_date=request.args.get('from_date',''), to_date=request.args.get('to_date',''), page=p) }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+            <a class="btn secondary small ajax-page" href="{{ url_for('budgets', from_date=request.args.get('from_date',''), to_date=request.args.get('to_date',''), page=page+1) }}">Next ▶</a>
+        {% endif %}
+    </div>
+</div>
+<div class="table-wrapper">
+    <table class="transaction-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for t in transactions %}
+            <tr>
+                <td>{{ t.date.strftime('%Y-%m-%d') if t.date else '' }}</td>
+                <td>{{ t.category }}</td>
+                <td>{{ t.type }}</td>
+                <td>{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(t.amount) }}</td>
+                <td style="display:flex; gap:6px; align-items:center;">
+                    <a class="btn secondary small ajax-edit" href="{{ url_for('edit_budget', bud_id=t.id, next=_nxt) }}">Edit</a>
+                    <form method="POST"
+                          action="{{ url_for('delete_budget', bud_id=t.id) }}"
+                          onsubmit="return confirm('Delete this transaction?');">
+                                                <input type="hidden" name="next" value="{{ _nxt }}">
+                        <button class="btn danger small">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+
+    </table>
+</div>
+<div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center">
+    <div></div>
+    <div>
+        {% if page > 1 %}
+            <a class="btn secondary small ajax-page" href="{{ url_for('budgets', from_date=request.args.get('from_date',''), to_date=request.args.get('to_date',''), page=page-1) }}">◀ Prev</a>
+        {% endif %}
+        {% if page < total_pages %}
+            <a class="btn secondary small ajax-page" href="{{ url_for('budgets', from_date=request.args.get('from_date',''), to_date=request.args.get('to_date',''), page=page+1) }}">Next ▶</a>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<p>No transactions yet.</p>
+{% endif %}

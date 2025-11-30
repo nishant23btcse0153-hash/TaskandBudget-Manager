@@ -63,6 +63,10 @@
         </div>
     </div>
 
+    <div style="margin-top:8px; font-size:0.95rem; color:#374151">
+        Totals and category charts reflect the entire filtered date range (all pages), not only the current page.
+    </div>
+
 
     <!-- FILTERS -->
     <h2 class="section-title">Filter Transactions</h2>
@@ -136,42 +140,19 @@
     <!-- TABLE -->
     <h2 class="section-title">Your Transaction History</h2>
 
-    {% if transactions %}
-    <div class="table-wrapper">
-        <table class="transaction-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                    <th></th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {% for t in transactions %}
-                <tr>
-                    <td>{{ t.date.strftime('%Y-%m-%d') if t.date else '' }}</td>
-                    <td>{{ t.category }}</td>
-                    <td>{{ t.type }}</td>
-                    <td>{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(t.amount) }}</td>
-                    <td>
-                        <form method="POST"
-                              action="{{ url_for('delete_budget', bud_id=t.id) }}"
-                              onsubmit="return confirm('Delete this transaction?');">
-                            <button class="btn danger small">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-
-        </table>
-    </div>
-    {% else %}
-    <p>No transactions yet.</p>
+    {% set _table_url = request.full_path.replace('ajax=1','') %}
+    {% if _table_url.endswith('?') or _table_url.endswith('&') %}
+        {% set _table_url = _table_url[:-1] %}
     {% endif %}
+
+    <div id="budgetsTableContainer" data-current-url="{{ _table_url }}">
+        {% include '_budgets_table.html' %}
+    </div>
+
+    <!-- AJAX Edit Modal -->
+    <div id="ajaxModal" class="ajax-modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div id="ajaxModalContent" style="background:white; padding:18px; border-radius:8px; max-width:600px; width:90%; max-height:80vh; overflow:auto;"></div>
+    </div>
 
 </div>
 
@@ -415,14 +396,21 @@ document.addEventListener('DOMContentLoaded', function(){
 
     if(breakdownAll){
 
+        // Improved palette: use blues/oranges/purples for clarity (avoid many greens)
         const colors = [
-            '#059669','#10b981','#34d399','#6ee7b7','#a7f3d0',
-            '#d1fae5','#064e3b','#065f46','#047857','#0d9488'
+            '#2563eb','#06b6d4','#f59e0b','#7c3aed','#ef4444',
+            '#60a5fa','#f97316','#a78bfa','#84cc16','#f472b6'
         ];
 
-        /* PIE */
-        const pieLabels = breakdownAll.map(x => x[0]);
-        const pieData = breakdownAll.map(x => x[1]);
+        /* PIE: show expenses by category plus an Income slice; display percentages */
+        const pieLabels = breakdownExpenses.map(x => x[0]).concat(['Income']);
+        const expenseValues = breakdownExpenses.map(x => Number(x[1]));
+        const totalIncome = Number({{ incomes | tojson }});
+        const pieData = expenseValues.concat([totalIncome]);
+
+        // compute total for percentage calculations
+        const pieTotal = pieData.reduce((a,b)=>a+(Number(b)||0), 0) || 1;
+        const pieColors = colors.slice(0, pieLabels.length);
 
         new Chart(document.getElementById("categoryPie"), {
             type: "pie",
@@ -430,13 +418,26 @@ document.addEventListener('DOMContentLoaded', function(){
                 labels: pieLabels,
                 datasets: [{
                     data: pieData,
-                    backgroundColor: colors.slice(0, pieLabels.length)
+                    backgroundColor: pieColors
                 }]
             },
             options: { 
                 responsive:true, 
                 maintainAspectRatio:false,
-                plugins:{ legend:{ display:false } }
+                plugins:{ 
+                    legend:{ display:false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx){
+                                const label = ctx.label || '';
+                                const val = Number(ctx.parsed) || 0;
+                                const pct = ((val / pieTotal) * 100).toFixed(1);
+                                const sym = "{{ '$' if currency=='USD' else '₹' }}";
+                                return `${label}: ${sym}${val.toFixed(2)} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
             }
         });
 
@@ -474,6 +475,115 @@ document.addEventListener('DOMContentLoaded', function(){
             legend.appendChild(item);
         });
     }
+});
+</script>
+<script>
+// AJAX pagination for budgets table
+function attachAjaxPagination(){
+    document.querySelectorAll('.ajax-page').forEach(a=>{
+        a.removeEventListener('click', ajaxPageHandler);
+        a.addEventListener('click', ajaxPageHandler);
+    });
+}
+
+function attachAjaxEdit(){
+    document.querySelectorAll('.ajax-edit').forEach(a=>{
+        a.removeEventListener('click', ajaxEditHandler);
+        a.addEventListener('click', ajaxEditHandler);
+    });
+}
+
+function closeModal(){
+    const modal = document.getElementById('ajaxModal');
+    modal.style.display = 'none';
+    document.getElementById('ajaxModalContent').innerHTML = '';
+}
+
+async function ajaxEditHandler(e){
+    e.preventDefault();
+    const href = e.currentTarget.href;
+    const url = href + (href.includes('?') ? '&ajax=1' : '?ajax=1');
+    try{
+        const res = await fetch(url, { credentials: 'same-origin' });
+        if(!res.ok) throw new Error('Network error');
+        const html = await res.text();
+        const modal = document.getElementById('ajaxModal');
+        const content = document.getElementById('ajaxModalContent');
+        content.innerHTML = html;
+        modal.style.display = 'flex';
+
+        const cancelBtn = document.getElementById('ajax-edit-cancel');
+        if(cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+        const form = document.getElementById('ajax-edit-budget-form');
+        if(form){
+            form.addEventListener('submit', async function(ev){
+                ev.preventDefault();
+                const fd = new FormData(form);
+                try{
+                    const postRes = await fetch(form.action + (form.action.includes('?') ? '&ajax=1' : '?ajax=1'), {
+                        method: 'POST',
+                        body: fd,
+                        credentials: 'same-origin',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const data = await postRes.json();
+                    if(data && data.success){
+                        closeModal();
+                        const container = document.getElementById('budgetsTableContainer');
+                        const reloadUrl = (container && container.dataset.currentUrl) ? container.dataset.currentUrl : window.location.pathname + window.location.search;
+                        const fetchUrl = reloadUrl + (reloadUrl.includes('?') ? '&ajax=1' : '?ajax=1');
+                        const r2 = await fetch(fetchUrl, { credentials: 'same-origin' });
+                        if(r2.ok){
+                            const h2 = await r2.text();
+                            container.innerHTML = h2;
+                            attachAjaxPagination();
+                            attachAjaxEdit();
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        window.location.reload();
+                    }
+                }catch(err){
+                    console.error('AJAX edit submit failed', err);
+                    window.location.reload();
+                }
+            });
+        }
+
+    }catch(err){
+        console.error('Failed to load edit form', err);
+        window.location.href = href;
+    }
+}
+
+async function ajaxPageHandler(e){
+    e.preventDefault();
+    const href = e.currentTarget.href;
+    const url = href + (href.includes('?') ? '&ajax=1' : '?ajax=1');
+    try{
+        const res = await fetch(url, { credentials: 'same-origin' });
+        if(!res.ok) throw new Error('Network error');
+        const html = await res.text();
+        const container = document.getElementById('budgetsTableContainer');
+        if(container){
+            container.innerHTML = html;
+            container.dataset.currentUrl = href;
+            attachAjaxPagination();
+            attachAjaxEdit();
+        } else {
+            window.location.href = href;
+        }
+    }catch(err){
+        console.error('AJAX page load failed', err);
+        window.location.href = href;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    attachAjaxPagination();
+    attachAjaxEdit();
 });
 </script>
 {% endblock %}

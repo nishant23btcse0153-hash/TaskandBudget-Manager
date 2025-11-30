@@ -14,6 +14,7 @@ from forms import LoginForm, RegisterForm, TaskForm, BudgetForm
 
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import case, func, or_
+import math
 import requests
 import time
 import csv
@@ -359,8 +360,6 @@ def create_task():
     return redirect(url_for("tasks"))
 
 
-    
-
 
 # -------------------------------------------------
 # TASK DELETE (AJAX)
@@ -378,6 +377,10 @@ def delete_task(task_id):
     db.session.commit()
 
     flash("Task deleted.", "info")
+    # preserve return URL if provided
+    nxt = request.form.get('next')
+    if nxt:
+        return redirect(nxt)
     return redirect(url_for("tasks"))
 
 
@@ -397,6 +400,9 @@ def toggle_task(task_id):
     task.status = "done" if task.status != "done" else "pending"
     db.session.commit()
 
+    nxt = request.form.get('next')
+    if nxt:
+        return redirect(nxt)
     return redirect(url_for("tasks"))
 
 
@@ -441,6 +447,10 @@ def edit_task(task_id):
         db.session.commit()
 
         flash("Task updated.", "success")
+        # preserve return URL if provided
+        nxt = request.form.get('next')
+        if nxt:
+            return redirect(nxt)
         return redirect(url_for("tasks"))
 
     # Pre-fill form on GET
@@ -482,7 +492,25 @@ def budgets():
             pass
 
 
-    transactions = q.order_by(Budget.date.desc()).all()
+    # Pagination
+    try:
+        page = int(request.args.get('page', 1))
+        if page < 1:
+            page = 1
+    except Exception:
+        page = 1
+
+    per_page = 10
+    total_count = q.count()
+    total_pages = math.ceil(total_count / per_page) if total_count else 1
+
+    # paginated transactions for table
+    transactions = q.order_by(Budget.date.desc()).offset((page - 1) * per_page).limit(per_page).all()
+
+    # For summary numbers and charts we want to aggregate over the entire
+    # filtered result (not just the current page). This computes totals
+    # and breakdowns from the full query.
+    full_items = q.order_by(Budget.date.desc()).all()
 
     user_cur = current_user.currency or "USD"
     rates = get_conversion_rates("USD")
@@ -492,7 +520,7 @@ def budgets():
     categories_all = {}
     categories_expenses = {}
 
-    for t in transactions:
+    for t in full_items:
         conv = convert_amount(t.amount, t.currency, user_cur, rates)
 
         if t.type == "income":
@@ -508,6 +536,23 @@ def budgets():
     breakdown_all_list = list(categories_all.items())
     breakdown_expenses_list = list(categories_expenses.items())
 
+    # If AJAX request for pagination, return only the table partial
+    if request.args.get('ajax') == '1':
+        return render_template(
+            "_budgets_table.html",
+            transactions=transactions,
+            incomes=incomes,
+            expenses=expenses,
+            balance=incomes - expenses,
+            breakdown=breakdown_all_list,
+            breakdown_expenses=breakdown_expenses_list,
+            currency=user_cur,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            total_count=total_count,
+        )
+
     return render_template(
         "budget_management.html",
         form=form,
@@ -518,6 +563,10 @@ def budgets():
         breakdown=breakdown_all_list,
         breakdown_expenses=breakdown_expenses_list,  # <- avoids Undefined in JS
         currency=user_cur,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
+        total_count=total_count,
     )
 
 
@@ -593,6 +642,10 @@ def delete_budget(bud_id):
     db.session.commit()
 
     flash("Transaction deleted.", "info")
+    # preserve return URL if provided
+    nxt = request.form.get('next')
+    if nxt:
+        return redirect(nxt)
     return redirect(url_for("budgets"))
 
 
@@ -624,6 +677,13 @@ def edit_budget(bud_id):
         db.session.commit()
 
         flash("Transaction updated.", "success")
+        # preserve return URL if provided
+        nxt = request.form.get('next')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.args.get('ajax') == '1':
+            # For AJAX POST requests, return JSON so client JS can refresh the table
+            return jsonify({'success': True, 'redirect': nxt or url_for('budgets')})
+        if nxt:
+            return redirect(nxt)
         return redirect(url_for("budgets"))
 
     if not form.is_submitted():
@@ -632,6 +692,10 @@ def edit_budget(bud_id):
         form.type.data = b.type
         # Budget.date is DateTime → convert to date
         form.date.data = b.date.date() if b.date else None
+
+    # If AJAX GET requested, return partial form
+    if request.args.get('ajax') == '1':
+        return render_template('_edit_budget_form.html', form=form, bud=b)
 
     return render_template("edit_budget.html", form=form, bud=b)
 
