@@ -179,14 +179,29 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    # ---- DATE RANGE FILTER ----
+    date_range = request.args.get('date_range', 'all')
+    now = now_ist_naive()
+    
+    # Compute start date based on range
+    if date_range == 'week':
+        start_date = now - timedelta(days=7)
+    elif date_range == 'month':
+        start_date = now - timedelta(days=30)
+    elif date_range == 'today':
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:  # 'all'
+        start_date = None
+    
     # ---- TASK STATS ----
     tq = Task.query.filter_by(user_id=current_user.id)
+    if start_date:
+        tq = tq.filter(Task.deadline >= start_date)
 
     total_tasks = tq.count()
     completed = tq.filter(Task.status == "done").count()
     pending = tq.filter(Task.status == "pending").count()
 
-    now = now_ist_naive()
     overdue = tq.filter(Task.deadline < now, Task.status != "done").count()
 
     next24 = now + timedelta(hours=24)
@@ -202,7 +217,10 @@ def dashboard():
     }
 
     # ---- BUDGET STATS ----
-    bq = Budget.query.filter_by(user_id=current_user.id).all()
+    bq = Budget.query.filter_by(user_id=current_user.id)
+    if start_date:
+        bq = bq.filter(Budget.date >= start_date)
+    bq = bq.all()
 
     user_cur = current_user.currency or "USD"
     rates = get_conversion_rates("USD")
@@ -235,6 +253,7 @@ def dashboard():
         currency=user_cur,
         task_chart_data=task_chart_data,
         finance_chart_data=finance_chart_data,
+        date_range=date_range,
     )
 
 
@@ -732,12 +751,11 @@ def export_budgets():
         ws = wb.active
         ws.title = "Transactions"
 
-        headers = ["ID", "Date", "Category", "Type", "Amount", "Currency"]
+        headers = ["Date", "Category", "Type", "Amount", "Currency"]
         ws.append(headers)
 
         for t in data:
             ws.append([
-                t.id,
                 t.date.strftime("%Y-%m-%d") if t.date else "",
                 t.category,
                 t.type,
@@ -761,10 +779,9 @@ def export_budgets():
     # CSV
     si = StringIO()
     cw = csv.writer(si)
-    cw.writerow(["ID", "Date", "Category", "Type", "Amount", "Currency"])
+    cw.writerow(["Date", "Category", "Type", "Amount", "Currency"])
     for t in data:
         cw.writerow([
-            t.id,
             t.date.strftime("%Y-%m-%d") if t.date else "",
             t.category,
             t.type,

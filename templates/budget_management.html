@@ -64,7 +64,7 @@
     </div>
 
     <div style="margin-top:8px; font-size:0.95rem; color:#374151">
-        Totals and category charts reflect the entire filtered date range (all pages), not only the current page.
+        Summary is based on filters applied below
     </div>
 
 
@@ -85,27 +85,29 @@
                    value="{{ request.args.get('to_date','') }}">
         </div>
 
-        <button type="submit" class="btn primary large">Apply</button>
+        <div class="form-group" style="display:flex; align-items:flex-end; gap:10px;">
+            <button type="submit" class="btn primary large">Apply</button>
+            
+            <!-- Download dropdown -->
+            <div class="download-container">
+                <button type="button" class="btn secondary large" id="downloadBtn">
+                    Download ▼
+                </button>
 
-        <!-- Download dropdown -->
-        <div class="download-container">
-            <button type="button" class="btn secondary large" id="downloadBtn">
-                Download ▼
-            </button>
-
-            <div id="downloadMenu" class="download-menu">
-                <a href="{{ url_for('export_budgets',
-                        from_date=request.args.get('from_date',''),
-                        to_date=request.args.get('to_date',''),
-                        format='csv') }}">
-                    Export as CSV
-                </a>
-                <a href="{{ url_for('export_budgets',
-                        from_date=request.args.get('from_date',''),
-                        to_date=request.args.get('to_date',''),
-                        format='xlsx') }}">
-                    Export as Excel
-                </a>
+                <div id="downloadMenu" class="download-menu">
+                    <a href="{{ url_for('export_budgets',
+                            from_date=request.args.get('from_date',''),
+                            to_date=request.args.get('to_date',''),
+                            format='csv') }}">
+                        Export as CSV
+                    </a>
+                    <a href="{{ url_for('export_budgets',
+                            from_date=request.args.get('from_date',''),
+                            to_date=request.args.get('to_date',''),
+                            format='xlsx') }}">
+                        Export as Excel
+                    </a>
+                </div>
             </div>
         </div>
 

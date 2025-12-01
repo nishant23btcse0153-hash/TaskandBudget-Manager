@@ -4,6 +4,14 @@
 
 <h1 class="page-title">DASHBOARD OVERVIEW</h1>
 
+<!-- DATE RANGE FILTER -->
+<div class="filter-buttons">
+    <a href="{{ url_for('dashboard', date_range='all') }}" class="filter-btn {{ 'active' if date_range == 'all' else '' }}">All Time</a>
+    <a href="{{ url_for('dashboard', date_range='month') }}" class="filter-btn {{ 'active' if date_range == 'month' else '' }}">Last 30 Days</a>
+    <a href="{{ url_for('dashboard', date_range='week') }}" class="filter-btn {{ 'active' if date_range == 'week' else '' }}">Last 7 Days</a>
+    <a href="{{ url_for('dashboard', date_range='today') }}" class="filter-btn {{ 'active' if date_range == 'today' else '' }}">Today</a>
+</div>
+
 <!-- SUMMARY SECTION -->
 <div class="summary-section">
 
@@ -112,8 +120,38 @@
 .page-title {
     font-size: 32px;
     font-weight: 800;
-    margin-bottom: 25px;
+    margin-bottom: 15px;
     color: #111;
+}
+
+/* Filter Buttons */
+.filter-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    background: #f3f4f6;
+    color: #374151;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.filter-btn:hover {
+    background: #e5e7eb;
+}
+
+.filter-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #1d4ed8;
 }
 
 /* Summary Boxes */
