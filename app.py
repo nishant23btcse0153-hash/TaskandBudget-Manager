@@ -18,6 +18,7 @@ import math
 import requests
 import time
 import csv
+import os
 from io import StringIO, BytesIO
 from openpyxl import Workbook
 
@@ -88,10 +89,54 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
+# Initialize Flask-Mail
+from flask_mail import Mail
+mail = Mail(app)
+
+# Initialize CSRF Protection
+from flask_wtf.csrf import CSRFProtect
+csrf = CSRFProtect(app)
+
+# Initialize Rate Limiting
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
 from models import create_models
+from email_utils import generate_token, confirm_token, send_verification_email, send_password_reset_email
 
 User, Task, Budget, Tag = create_models(db)
 
+# Initialize Automatic Notification Scheduler
+from apscheduler.schedulers.background import BackgroundScheduler
+from notification_utils import check_and_send_notifications
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    func=lambda: check_and_send_notifications(app, db, mail, User, Task),
+    trigger="interval",
+    hours=app.config['NOTIFICATION_CHECK_INTERVAL_HOURS'],
+    id='notification_check',
+    name='Check and send task notifications',
+    replace_existing=True
+)
+scheduler.start()
+
+print(f"🔔 Notification scheduler started - checking every {app.config['NOTIFICATION_CHECK_INTERVAL_HOURS']} hour(s)")
+
+# Shutdown scheduler on app exit
+import atexit
+atexit.register(lambda: scheduler.shutdown())
+
+# Auto-initialize database tables on first request (for free tier deployment)
+with app.app_context():
+    db.create_all()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -114,19 +159,25 @@ def global_vars():
 def home():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
-    return redirect(url_for("login"))
+    return render_template("home.html")
 
 
 # -------------------------------------------------
 # LOGIN
 # -------------------------------------------------
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("100 per 10 minutes")
 def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
 
         if user and check_password_hash(user.password, form.password.data):
+            # Check if email is verified
+            if not user.email_verified:
+                flash("Please verify your email address before logging in. Check your inbox for the verification link.", "warning")
+                return render_template("login.html", form=form, unverified_email=user.email)
+            
             login_user(user)
             return redirect(url_for("dashboard"))
 
@@ -139,6 +190,7 @@ def login():
 # REGISTER
 # -------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
+@limiter.limit("100 per 10 minutes")
 def register():
     form = RegisterForm()
 
@@ -148,17 +200,42 @@ def register():
             flash("Email already exists. Please login.", "warning")
             return redirect(url_for("login"))
 
+        # Generate verification token
+        token = generate_token(form.email.data)
+
         user = User(
             email=form.email.data,
             password=generate_password_hash(form.password.data),
             currency=form.currency.data,
+            email_verified=False,
+            verification_token=token
         )
 
         db.session.add(user)
         db.session.commit()
-        login_user(user)
 
-        return redirect(url_for("dashboard"))
+        # Send verification email (only if email is configured)
+        if app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD'):
+            try:
+                print(f"DEBUG: Attempting to send verification email to {user.email}")
+                result = send_verification_email(mail, user.email, token)
+                if result:
+                    flash("Registration successful! Please check your email to verify your account.", "success")
+                else:
+                    flash("Registration successful! However, we couldn't send the verification email. Please contact support.", "warning")
+            except Exception as e:
+                print(f"Email error: {e}")
+                import traceback
+                traceback.print_exc()
+                flash("Registration successful! Email sending failed. Please contact support.", "warning")
+        else:
+            # For development without email configured, auto-verify users
+            user.email_verified = True
+            user.verification_token = None
+            db.session.commit()
+            flash("Registration successful! You can now log in. (Email verification disabled in development)", "success")
+
+        return redirect(url_for("login"))
 
     return render_template("register.html", form=form)
 
@@ -171,6 +248,259 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for("login"))
+
+
+# -------------------------------------------------
+# NOTIFICATION SETTINGS
+# -------------------------------------------------
+@app.route("/settings/notifications", methods=["GET", "POST"])
+@login_required
+def notification_settings():
+    """Manage task notification preferences"""
+    if request.method == "POST":
+        enabled = request.form.get("notifications_enabled") == "on"
+        hours = int(request.form.get("notification_hours", 24))
+        
+        # Validate hours
+        if hours < 1 or hours > 168:  # 1 hour to 1 week
+            flash("Notification time must be between 1 and 168 hours.", "danger")
+        else:
+            current_user.notifications_enabled = enabled
+            current_user.notification_hours = hours
+            db.session.commit()
+            flash("Notification settings updated successfully!", "success")
+        
+        return redirect(url_for("notification_settings"))
+    
+    return render_template("notification_settings.html")
+
+
+@app.route("/api/check-notifications", methods=["POST"])
+@login_required
+@limiter.limit("100 per 10 minutes")
+def check_notifications_manual():
+    """Manually trigger notification check (admin/testing)"""
+    from notification_utils import check_and_send_notifications
+    
+    count = check_and_send_notifications(app, db, mail, User, Task)
+    
+    return jsonify({
+        "success": True,
+        "notifications_sent": count,
+        "message": f"Checked notifications. Sent {count} reminder(s)."
+    })
+
+
+# -------------------------------------------------
+# EMAIL VERIFICATION
+# -------------------------------------------------
+@app.route("/verify/<token>")
+def verify_email(token):
+    """Verify email address"""
+    email = confirm_token(token, expiration=86400)  # 24 hours
+    
+    if not email:
+        flash("The verification link is invalid or has expired.", "danger")
+        return redirect(url_for("login"))
+    
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for("login"))
+    
+    if user.email_verified:
+        flash("Email already verified. Please log in.", "info")
+        return redirect(url_for("login"))
+    
+    user.email_verified = True
+    user.verification_token = None
+    db.session.commit()
+    
+    flash("Email verified successfully! You can now log in.", "success")
+    return redirect(url_for("login"))
+
+
+@app.route("/resend-verification", methods=["POST"])
+@limiter.limit("100 per 10 minutes")
+def resend_verification():
+    """Resend verification email"""
+    email = request.form.get("email")
+    
+    if not email:
+        flash("Please provide an email address.", "danger")
+        return redirect(url_for("login"))
+    
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        flash("Email not found.", "danger")
+        return redirect(url_for("login"))
+    
+    if user.email_verified:
+        flash("Email already verified. Please log in.", "info")
+        return redirect(url_for("login"))
+    
+    # Generate new token
+    token = generate_token(user.email)
+    user.verification_token = token
+    db.session.commit()
+    
+    # Send email (only if email is configured)
+    if app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD'):
+        try:
+            if send_verification_email(mail, user.email, token):
+                flash("Verification email sent! Please check your inbox.", "success")
+            else:
+                flash("Failed to send verification email. Please try again later.", "danger")
+        except Exception as e:
+            print(f"Email error: {e}")
+            flash("Failed to send verification email. Email not configured.", "danger")
+    else:
+        # For development, auto-verify
+        user.email_verified = True
+        user.verification_token = None
+        db.session.commit()
+        flash("Email not configured. Your account has been verified automatically.", "info")
+    
+    return redirect(url_for("login"))
+
+
+# -------------------------------------------------
+# PASSWORD RESET
+# -------------------------------------------------
+@app.route("/forgot-password", methods=["GET", "POST"])
+@limiter.limit("100 per 10 minutes")
+def forgot_password():
+    """Request password reset"""
+    if request.method == "POST":
+        email = request.form.get("email")
+        
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Generate reset token (expires in 1 hour)
+            token = generate_token(user.email, salt="password-reset")
+            user.reset_token = token
+            user.reset_token_expiry = now_ist_naive() + timedelta(hours=1)
+            db.session.commit()
+            
+            # Send reset email (only if email is configured)
+            if app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD'):
+                try:
+                    if send_password_reset_email(mail, user.email, token):
+                        flash("Password reset link sent to your email!", "success")
+                    else:
+                        flash("Failed to send reset email. Please try again later.", "danger")
+                except Exception as e:
+                    print(f"Email error: {e}")
+                    flash("Failed to send reset email. Email not configured.", "danger")
+            else:
+                flash("Password reset email not configured. Please contact administrator.", "warning")
+        else:
+            # Don't reveal if email exists or not (security)
+            flash("If that email exists, a password reset link has been sent.", "info")
+        
+        return redirect(url_for("login"))
+    
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+@limiter.limit("100 per 10 minutes")
+def reset_password(token):
+    """Reset password with token"""
+    email = confirm_token(token, expiration=3600, salt="password-reset")  # 1 hour
+    
+    if not email:
+        flash("The reset link is invalid or has expired.", "danger")
+        return redirect(url_for("forgot_password"))
+    
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for("login"))
+    
+    # Check if token matches and hasn't expired
+    if user.reset_token != token:
+        flash("Invalid reset token.", "danger")
+        return redirect(url_for("forgot_password"))
+    
+    if user.reset_token_expiry and now_ist_naive() > user.reset_token_expiry:
+        flash("Reset token has expired. Please request a new one.", "danger")
+        return redirect(url_for("forgot_password"))
+    
+    if request.method == "POST":
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+        
+        if not password or len(password) < 6:
+            flash("Password must be at least 6 characters long.", "danger")
+            return render_template("reset_password.html", token=token)
+        
+        if password != confirm_password:
+            flash("Passwords do not match.", "danger")
+            return render_template("reset_password.html", token=token)
+        
+        # Update password and clear reset token
+        user.password = generate_password_hash(password)
+        user.reset_token = None
+        user.reset_token_expiry = None
+        db.session.commit()
+        
+        flash("Password reset successful! You can now log in.", "success")
+        return redirect(url_for("login"))
+    
+    return render_template("reset_password.html", token=token)
+
+
+# -------------------------------------------------
+# ACCOUNT SETTINGS
+# -------------------------------------------------
+@app.route("/settings", methods=["GET", "POST"])
+@login_required
+def settings():
+    if request.method == "POST":
+        action = request.form.get("action")
+        
+        if action == "change_currency":
+            new_currency = request.form.get("currency")
+            if new_currency:
+                current_user.currency = new_currency
+                db.session.commit()
+                flash("Currency updated successfully!", "success")
+            return redirect(url_for("settings"))
+        
+        elif action == "delete_account":
+            password = request.form.get("password")
+            if not password or not check_password_hash(current_user.password, password):
+                flash("Incorrect password. Account not deleted.", "error")
+                return redirect(url_for("settings"))
+            
+            # Delete all user data - delete in correct order due to foreign keys
+            # First get all user tasks
+            user_tasks = Task.query.filter_by(user_id=current_user.id).all()
+            
+            # Delete task-tag associations
+            for task in user_tasks:
+                task.tags_rel = []  # Clear all tag relationships
+            
+            # Delete tasks
+            Task.query.filter_by(user_id=current_user.id).delete()
+            
+            # Delete budgets
+            Budget.query.filter_by(user_id=current_user.id).delete()
+            
+            # Delete user
+            db.session.delete(current_user)
+            db.session.commit()
+            
+            logout_user()
+            flash("Your account has been deleted successfully.", "success")
+            return redirect(url_for("login"))
+    
+    return render_template("settings.html")
 
 
 # -------------------------------------------------
@@ -468,6 +798,9 @@ def edit_task(task_id):
         flash("Task updated.", "success")
         # preserve return URL if provided
         nxt = request.form.get('next')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.args.get('ajax') == '1':
+            # For AJAX POST requests, return JSON so client JS can refresh
+            return jsonify({'success': True, 'redirect': nxt or url_for('tasks')})
         if nxt:
             return redirect(nxt)
         return redirect(url_for("tasks"))
@@ -481,6 +814,10 @@ def edit_task(task_id):
         # Pre-fill tags as comma-separated string
         existing_tags = ', '.join([tag.name for tag in task.tags_rel])
         form.tags.data = existing_tags
+
+    # If AJAX GET requested, return partial form
+    if request.args.get('ajax') == '1':
+        return render_template('_edit_task_form.html', form=form, task=task)
 
     return render_template("edit_task.html", form=form, task=task)
 
@@ -800,7 +1137,24 @@ def export_budgets():
 
 
 # -------------------------------------------------
+# ERROR HANDLERS
+# -------------------------------------------------
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('errors/404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('errors/500.html'), 500
+
+
+# -------------------------------------------------
 # MAIN
 # -------------------------------------------------
 if __name__ == "__main__":
-    app.run(debug=True, port=8000)
+    # Use environment variable for debug mode (default False for production)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    port = int(os.environ.get('PORT', 8000))
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
+

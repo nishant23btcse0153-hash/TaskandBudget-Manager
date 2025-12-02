@@ -8,54 +8,428 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    
+    <style>
+        /* Modern Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+        }
+
+        /* Modern Navigation */
+        .modern-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .modern-nav {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .brand-icon {
+            font-size: 32px;
+        }
+
+        .brand-text {
+            font-size: 24px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.95;
+        }
+
+        .user-email-small {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: 2px solid;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-btn-primary {
+            background: white;
+            color: #667eea;
+            border-color: white;
+        }
+
+        .nav-btn-primary:hover {
+            background: #f9fafb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255,255,255,0.3);
+        }
+
+        .nav-btn-secondary {
+            background: transparent;
+            color: white;
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        .nav-btn-secondary:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: white;
+        }
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-btn {
+            display: none;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mobile-menu-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 70px;
+                left: 0;
+                right: 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                flex-direction: column;
+                padding: 16px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            }
+
+            .nav-links.mobile-active {
+                display: flex;
+            }
+
+            .nav-link {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .nav-right {
+                gap: 8px;
+            }
+
+            .user-details {
+                display: none;
+            }
+
+            .nav-btn {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
 
-    <header>
-        <nav class="topbar">
-            <div class="nav-left">
-    <a class="brand" href="{{ url_for('dashboard') }}">Task&amp;Budget</a>
+    <header class="modern-header">
+        <nav class="modern-nav">
+            <a class="nav-brand" href="{% if current_user.is_authenticated %}{{ url_for('dashboard') }}{% else %}{{ url_for('index') }}{% endif %}">
+                <span class="brand-icon">💼</span>
+                <span class="brand-text">Task&Budget</span>
+            </a>
 
-    {% if current_user.is_authenticated %}
-        <a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('tasks') }}">Tasks</a>
-        <a href="{{ url_for('budgets') }}">Budgets</a>
-    {% endif %}
-</div>
-
+            {% if current_user.is_authenticated %}
+                <div class="nav-links" id="navLinks">
+                    <a class="nav-link" href="{{ url_for('dashboard') }}">
+                        <span>📊</span> Dashboard
+                    </a>
+                    <a class="nav-link" href="{{ url_for('tasks') }}">
+                        <span>📝</span> Tasks
+                    </a>
+                    <a class="nav-link" href="{{ url_for('budgets') }}">
+                        <span>💰</span> Budgets
+                    </a>
+                </div>
+            {% endif %}
 
             <div class="nav-right">
                 {% if current_user.is_authenticated %}
-                    <span class="user-email">{{ current_user.email }}</span>
-
-                   
-                      
-
-                    <a class="btn small" href="{{ url_for('logout') }}">Logout</a>
-
+                    <div class="user-info">
+                        <div class="user-avatar">{{ current_user.email[0].upper() }}</div>
+                        <div class="user-details">
+                            <div class="user-name">{{ current_user.email.split('@')[0] }}</div>
+                            <div class="user-email-small">{{ current_user.email }}</div>
+                        </div>
+                    </div>
+                    <a class="nav-link" href="{{ url_for('notification_settings') }}" title="Notifications">
+                        🔔
+                    </a>
+                    <a class="nav-link" href="{{ url_for('settings') }}" title="Settings">
+                        ⚙️
+                    </a>
+                    <a class="nav-btn nav-btn-primary" href="{{ url_for('logout') }}">
+                        Logout
+                    </a>
+                    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                        ☰
+                    </button>
                 {% else %}
-                    <a class="btn" href="{{ url_for('login') }}">Login</a>
-                    <a class="btn" href="{{ url_for('register') }}">Register</a>
+                    <a class="nav-btn nav-btn-secondary" href="{{ url_for('login') }}">Login</a>
+                    <a class="nav-btn nav-btn-primary" href="{{ url_for('register') }}">Sign Up</a>
                 {% endif %}
             </div>
         </nav>
     </header>
 
 
-    <main class="container">
+    <main class="modern-container">
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash {{ category }}">{{ message }}</div>
-                {% endfor %}
+                <div class="flash-container">
+                    {% for category, message in messages %}
+                        <div class="modern-flash modern-flash-{{ category }}">
+                            <span class="flash-icon">
+                                {% if category == 'success' %}✅{% elif category == 'error' %}❌{% elif category == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+                            </span>
+                            <span class="flash-message">{{ message }}</span>
+                            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
             {% endif %}
         {% endwith %}
 
         {% block content %}{% endblock %}
 
     </main>
+
+    <style>
+        /* Modern Container */
+        .modern-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        /* Modern Flash Messages */
+        .flash-container {
+            margin-bottom: 24px;
+        }
+
+        .modern-flash {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .flash-icon {
+            font-size: 20px;
+        }
+
+        .flash-message {
+            flex: 1;
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .flash-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .flash-close:hover {
+            opacity: 1;
+        }
+
+        .modern-flash-success {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+
+        .modern-flash-error {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border-left: 4px solid #ef4444;
+            color: #991b1b;
+        }
+
+        .modern-flash-warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+        }
+
+        .modern-flash-info {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-left: 4px solid #3b82f6;
+            color: #1e40af;
+        }
+
+        @media (max-width: 768px) {
+            .modern-container {
+                padding: 20px 16px;
+            }
+
+            .modern-flash {
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+        }
+    </style>
+
+    <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-active');
+        }
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const navLinks = document.getElementById('navLinks');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (navLinks && !navLinks.contains(event.target) && !menuBtn.contains(event.target)) {
+                navLinks.classList.remove('mobile-active');
+            }
+        });
+
+        // Highlight active nav link
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
 
     {% block scripts %}{% endblock %}
 

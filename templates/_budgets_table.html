@@ -46,8 +46,10 @@
                     <a class="btn secondary small ajax-edit" href="{{ url_for('edit_budget', bud_id=t.id, next=_nxt) }}">Edit</a>
                     <form method="POST"
                           action="{{ url_for('delete_budget', bud_id=t.id) }}"
-                          onsubmit="return confirm('Delete this transaction?');">
-                                                <input type="hidden" name="next" value="{{ _nxt }}">
+                          onsubmit="return confirm('Delete this transaction?');"
+                          data-preserve-scroll="true">
+                        {{ form.hidden_tag() }}
+                        <input type="hidden" name="next" value="{{ _nxt }}">
                         <button class="btn danger small">Delete</button>
                     </form>
                 </td>

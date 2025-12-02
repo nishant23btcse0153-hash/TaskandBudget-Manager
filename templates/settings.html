@@ -1,0 +1,762 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="settings-header">
+    <div>
+        <h1 class="page-title">⚙️ Account Settings</h1>
+        <p class="subtitle">Manage your account preferences and security</p>
+    </div>
+    <a href="{{ url_for('dashboard') }}" class="btn-back">
+        ← Back to Dashboard
+    </a>
+</div>
+
+<div class="settings-container">
+    
+    <!-- Account Info Card -->
+    <div class="settings-card info-card">
+        <div class="card-icon">👤</div>
+        <div class="card-content">
+            <h3 class="card-title">Account Information</h3>
+            <div class="info-row">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ current_user.email }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Member Since:</span>
+                <span class="info-value">{{ current_user.created_at.strftime('%B %d, %Y') if current_user.created_at else 'N/A' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Currency Settings Card -->
+    <div class="settings-card">
+        <div class="card-header">
+            <div class="card-icon">💱</div>
+            <div>
+                <h3 class="card-title">Currency Preferences</h3>
+                <p class="card-subtitle">Choose your preferred currency for budget tracking</p>
+            </div>
+        </div>
+        
+        <div class="current-setting">
+            <span class="setting-label">Current Currency:</span>
+            <span class="current-value">
+                {{ current_user.currency }} 
+                {% if current_user.currency == 'USD' %}$ - US Dollar
+                {% elif current_user.currency == 'EUR' %}€ - Euro
+                {% elif current_user.currency == 'GBP' %}£ - British Pound
+                {% elif current_user.currency == 'INR' %}₹ - Indian Rupee
+                {% elif current_user.currency == 'JPY' %}¥ - Japanese Yen
+                {% elif current_user.currency == 'AUD' %}$ - Australian Dollar
+                {% elif current_user.currency == 'CAD' %}$ - Canadian Dollar
+                {% elif current_user.currency == 'CNY' %}¥ - Chinese Yuan
+                {% endif %}
+            </span>
+        </div>
+        
+        <form method="POST" action="{{ url_for('settings') }}" class="settings-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="action" value="change_currency">
+            
+            <div class="form-group">
+                <label class="modern-label">Select New Currency</label>
+                <select id="currency" name="currency" class="modern-select" required>
+                    <option value="USD" {% if current_user.currency == 'USD' %}selected{% endif %}>💵 USD ($) - US Dollar</option>
+                    <option value="EUR" {% if current_user.currency == 'EUR' %}selected{% endif %}>💶 EUR (€) - Euro</option>
+                    <option value="GBP" {% if current_user.currency == 'GBP' %}selected{% endif %}>💷 GBP (£) - British Pound</option>
+                    <option value="INR" {% if current_user.currency == 'INR' %}selected{% endif %}>💰 INR (₹) - Indian Rupee</option>
+                    <option value="JPY" {% if current_user.currency == 'JPY' %}selected{% endif %}>💴 JPY (¥) - Japanese Yen</option>
+                    <option value="AUD" {% if current_user.currency == 'AUD' %}selected{% endif %}>🇦🇺 AUD ($) - Australian Dollar</option>
+                    <option value="CAD" {% if current_user.currency == 'CAD' %}selected{% endif %}>🇨🇦 CAD ($) - Canadian Dollar</option>
+                    <option value="CNY" {% if current_user.currency == 'CNY' %}selected{% endif %}>🇨🇳 CNY (¥) - Chinese Yuan</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn-submit">
+                <span>💾</span> Update Currency
+            </button>
+        </form>
+    </div>
+
+    <!-- Danger Zone Card -->
+    <div class="settings-card danger-card">
+        <div class="card-header">
+            <div class="card-icon danger-icon">⚠️</div>
+            <div>
+                <h3 class="card-title danger-title">Danger Zone</h3>
+                <p class="card-subtitle danger-subtitle">Irreversible account actions</p>
+            </div>
+        </div>
+        
+        <div class="danger-content">
+            <div class="warning-box">
+                <span class="warning-icon">🚨</span>
+                <div>
+                    <p class="warning-title">Permanent Account Deletion</p>
+                    <p class="warning-text">Once you delete your account, there is no going back. All your data will be permanently removed from our servers.</p>
+                    <ul class="warning-list">
+                        <li>All tasks will be deleted</li>
+                        <li>All budget records will be deleted</li>
+                        <li>All notifications will be deleted</li>
+                        <li>This action cannot be undone</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <button type="button" class="btn-danger" onclick="showDeleteModal()">
+                <span>🗑️</span> Delete My Account
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Account Confirmation Modal -->
+<div id="deleteModal" class="modern-modal" style="display: none;">
+    <div class="modal-backdrop" onclick="hideDeleteModal()"></div>
+    <div class="modern-modal-content">
+        <div class="modal-header">
+            <div class="modal-icon">🚨</div>
+            <h2 class="modal-title">Delete Account</h2>
+            <button class="modal-close" onclick="hideDeleteModal()">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+            <p class="modal-warning">Are you absolutely sure you want to delete your account?</p>
+            <p class="modal-emphasis">This action is <strong>permanent and cannot be undone</strong>.</p>
+            
+            <div class="modal-consequences">
+                <p class="consequences-title">What will be deleted:</p>
+                <ul>
+                    <li>✗ All your tasks and reminders</li>
+                    <li>✗ All budget and transaction records</li>
+                    <li>✗ All notification preferences</li>
+                    <li>✗ Your account credentials</li>
+                </ul>
+            </div>
+            
+            <form method="POST" action="{{ url_for('settings') }}" id="deleteForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="action" value="delete_account">
+                
+                <div class="form-group">
+                    <label class="modern-label">
+                        <span class="label-icon">🔒</span>
+                        Enter your password to confirm:
+                    </label>
+                    <input type="password" id="password" name="password" class="modern-input" placeholder="Enter your password" required>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="hideDeleteModal()">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-delete-confirm">
+                        <span>🗑️</span> Yes, Delete My Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Header */
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.page-title {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtitle {
+    color: #6b7280;
+    font-size: 16px;
+    margin-top: 4px;
+}
+
+.btn-back {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-back:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Settings Container */
+.settings-container {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Settings Cards */
+.settings-card {
+    background: white;
+    padding: 32px;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    transition: all 0.3s;
+}
+
+.settings-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+}
+
+/* Info Card */
+.info-card {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 2px solid #7dd3fc;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.info-card .card-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    box-shadow: 0 4px 16px rgba(14, 165, 233, 0.3);
+}
+
+.info-card .card-content {
+    flex: 1;
+}
+
+.info-card .card-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #075985;
+    margin: 0 0 16px 0;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #bae6fd;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #0369a1;
+}
+
+.info-value {
+    color: #0c4a6e;
+    font-weight: 500;
+}
+
+/* Card Header */
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.card-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.card-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.card-subtitle {
+    color: #6b7280;
+    font-size: 14px;
+    margin: 4px 0 0 0;
+}
+
+/* Current Setting Display */
+.current-setting {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.setting-label {
+    font-weight: 600;
+    color: #374151;
+}
+
+.current-value {
+    font-weight: 700;
+    color: #111827;
+    font-size: 16px;
+}
+
+/* Form Styles */
+.settings-form {
+    margin-top: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.modern-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #374151;
+    font-size: 15px;
+}
+
+.label-icon {
+    margin-right: 6px;
+}
+
+.modern-select,
+.modern-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 15px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.modern-select:focus,
+.modern-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 16px 32px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-submit span {
+    font-size: 20px;
+}
+
+/* Danger Card */
+.danger-card {
+    border: 3px solid #fecaca;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+
+.danger-card:hover {
+    border-color: #ef4444;
+}
+
+.danger-icon {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+}
+
+.danger-title {
+    color: #991b1b;
+}
+
+.danger-subtitle {
+    color: #dc2626;
+}
+
+.danger-content {
+    margin-top: 20px;
+}
+
+.warning-box {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    border: 2px solid #fca5a5;
+    margin-bottom: 20px;
+}
+
+.warning-icon {
+    font-size: 32px;
+    line-height: 1;
+}
+
+.warning-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #991b1b;
+    margin: 0 0 8px 0;
+}
+
+.warning-text {
+    color: #dc2626;
+    font-weight: 500;
+    margin: 0 0 12px 0;
+    line-height: 1.6;
+}
+
+.warning-list {
+    margin: 8px 0 0 20px;
+    padding: 0;
+    color: #b91c1c;
+}
+
+.warning-list li {
+    margin: 6px 0;
+    font-weight: 500;
+}
+
+.btn-danger {
+    width: 100%;
+    padding: 16px 32px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+.btn-danger span {
+    font-size: 20px;
+}
+
+/* Modal Styles */
+.modern-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.modern-modal-content {
+    position: relative;
+    background: white;
+    border-radius: 16px;
+    max-width: 560px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    padding: 24px;
+    border-radius: 16px 16px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+}
+
+.modal-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.modal-title {
+    flex: 1;
+    font-size: 24px;
+    font-weight: 800;
+    color: #991b1b;
+    margin: 0;
+}
+
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #991b1b;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: white;
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 32px;
+}
+
+.modal-warning {
+    font-size: 16px;
+    color: #374151;
+    margin: 0 0 12px 0;
+    font-weight: 500;
+}
+
+.modal-emphasis {
+    font-size: 15px;
+    color: #991b1b;
+    margin: 0 0 20px 0;
+}
+
+.modal-consequences {
+    background: #fef2f2;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #fecaca;
+    margin-bottom: 24px;
+}
+
+.consequences-title {
+    font-weight: 700;
+    color: #991b1b;
+    margin: 0 0 12px 0;
+    font-size: 15px;
+}
+
+.modal-consequences ul {
+    margin: 0;
+    padding: 0 0 0 20px;
+    color: #b91c1c;
+}
+
+.modal-consequences li {
+    margin: 8px 0;
+    font-weight: 500;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btn-cancel {
+    flex: 1;
+    padding: 14px 24px;
+    background: #f3f4f6;
+    color: #374151;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 15px;
+}
+
+.btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.btn-delete-confirm {
+    flex: 2;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 15px;
+}
+
+.btn-delete-confirm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .settings-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .btn-back {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .settings-card {
+        padding: 24px;
+    }
+
+    .info-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .info-row {
+        flex-direction: column;
+        gap: 6px;
+        text-align: center;
+    }
+
+    .card-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .warning-box {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+function showDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+
+function hideDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+    document.getElementById('password').value = '';
+}
+
+// Close modal when clicking outside
+document.getElementById('deleteModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideDeleteModal();
+    }
+});
+</script>
+
+{% endblock %}

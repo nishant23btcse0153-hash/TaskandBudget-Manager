@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="text-align: center; padding: 80px 20px;">
+    <h1 style="font-size: 120px; margin: 0; color: #e5e7eb;">500</h1>
+    <h2 style="font-size: 32px; margin: 20px 0; color: #374151;">Internal Server Error</h2>
+    <p style="font-size: 18px; color: #6b7280; margin-bottom: 30px;">
+        Something went wrong on our end. We're working to fix it!
+    </p>
+    <a href="{{ url_for('dashboard') }}" class="btn primary large">
+        Go to Dashboard
+    </a>
+</div>
+{% endblock %}

@@ -1,174 +1,231 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1 class="page-title">TASK MANAGEMENT</h1>
+<div class="tasks-header">
+    <div>
+        <h1 class="page-title">📝 Task Management</h1>
+        <p class="subtitle">Organize and track your tasks efficiently</p>
+    </div>
+    <button class="btn-new-task" onclick="toggleTaskForm()">
+        <span class="plus-icon">+</span> New Task
+    </button>
+</div>
 
 <div class="task-panel">
 
-    <!-- ADD TASK -->
-    <h2 class="section-title">Create a New Task</h2>
-
-    <form method="POST" action="{{ url_for('create_task') }}" class="form-box">
-        {{ form.hidden_tag() }}
-
-        <div class="form-row">
-            <div class="form-group">
-                {{ form.title.label(class="label") }}
-                {{ form.title(class="input", size=40) }}
-            </div>
-
-            <div class="form-group">
-                {{ form.deadline.label(class="label") }}
-                {{ form.deadline(class="input", required=True) }}
-            </div>
-            
-            <div class="form-group">
-                {{ form.priority.label(class="label") }}
-                {{ form.priority(class="input") }}
-            </div>
-            
-            <div class="form-group">
-                {{ form.tags.label(class="label") }}
-                {{ form.tags(class="input", placeholder="tag1, tag2", id='tags-input', list='tag-suggestions') }}
-                <datalist id="tag-suggestions"></datalist>
-            </div>
+    <!-- Helper message when form is hidden -->
+    <div id="formHelper" class="form-helper">
+        <div class="helper-content">
+            <span class="helper-icon">💡</span>
+            <span class="helper-text">Click the <strong>"+ New Task"</strong> button above or the <strong>floating button</strong> in the bottom-right corner to add a new task!</span>
         </div>
+    </div>
 
-        <div class="form-group">
-            {{ form.description.label(class="label") }}
-            {{ form.description(class="input", rows=3) }}
+    <!-- ADD TASK (Initially Hidden) -->
+    <div id="taskFormContainer" class="form-container" style="display: none;">
+        <div class="form-header">
+            <h2 class="form-title">✨ Create a New Task</h2>
+            <button class="close-btn" onclick="toggleTaskForm()">×</button>
         </div>
+        
+        <form method="POST" action="{{ url_for('create_task') }}" class="modern-form">
+            {{ form.hidden_tag() }}
 
-        <button class="btn primary large">Add Task</button>
-    </form>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    {{ form.title.label(class="modern-label") }}
+                    {{ form.title(class="modern-input", placeholder="Enter task title", size=40) }}
+                </div>
+
+                <div class="form-group">
+                    {{ form.deadline.label(class="modern-label") }}
+                    {{ form.deadline(class="modern-input", required=True) }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.priority.label(class="modern-label") }}
+                    {{ form.priority(class="modern-input") }}
+                </div>
+                
+                <div class="form-group full-width">
+                    {{ form.tags.label(class="modern-label") }}
+                    {{ form.tags(class="modern-input", placeholder="work, personal, urgent", id='tags-input', list='tag-suggestions') }}
+                    <datalist id="tag-suggestions"></datalist>
+                </div>
+                
+                <div class="form-group full-width">
+                    {{ form.description.label(class="modern-label") }}
+                    {{ form.description(class="modern-textarea", rows=3, placeholder="Add task description...") }}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="toggleTaskForm()">Cancel</button>
+                <button type="submit" class="btn-submit">✓ Create Task</button>
+            </div>
+        </form>
+    </div>
 
 
     <!-- FILTERS -->
-    <h2 class="section-title">Filter Tasks</h2>
+    <div class="filters-section">
+        <h2 class="filter-title">🔍 Filters & Sort</h2>
+        
+        <form method="GET" class="filters-form">
 
-    <form method="GET" class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">📊 Status</label>
+                <select name="filter" class="filter-select">
+                    <option value="all" {% if request.args.get('filter','all')=='all' %}selected{% endif %}>All Tasks</option>
+                    <option value="pending" {% if request.args.get('filter')=='pending' %}selected{% endif %}>⏳ Pending</option>
+                    <option value="done" {% if request.args.get('filter')=='done' %}selected{% endif %}>✅ Completed</option>
+                    <option value="overdue" {% if request.args.get('filter')=='overdue' %}selected{% endif %}>🔥 Overdue</option>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label class="label">Status</label>
-            <select name="filter" class="input">
-                <option value="all" {% if request.args.get('filter','all')=='all' %}selected{% endif %}>All</option>
-                <option value="pending" {% if request.args.get('filter')=='pending' %}selected{% endif %}>Pending</option>
-                <option value="done" {% if request.args.get('filter')=='done' %}selected{% endif %}>Completed</option>
-                <option value="overdue" {% if request.args.get('filter')=='overdue' %}selected{% endif %}>Overdue</option>
-            </select>
-        </div>
+            <div class="filter-group">
+                <label class="filter-label">🎯 Priority</label>
+                <select name="priority" class="filter-select">
+                    <option value="" {% if not priority_filter %}selected{% endif %}>Any Priority</option>
+                    <option value="High" {% if priority_filter=='High' %}selected{% endif %}>🔴 High</option>
+                    <option value="Medium" {% if priority_filter=='Medium' %}selected{% endif %}>🟡 Medium</option>
+                    <option value="Low" {% if priority_filter=='Low' %}selected{% endif %}>🟢 Low</option>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label class="label">Sort</label>
-            <select name="sort" class="input">
-                <option value="old" {% if request.args.get('sort','old')=='old' %}selected{% endif %}>Oldest to Newest</option>
-                <option value="new" {% if request.args.get('sort')=='new' %}selected{% endif %}>Newest to Oldest</option>
-            </select>
-        </div>
+            <div class="filter-group">
+                <label class="filter-label">📅 Sort By</label>
+                <select name="sort" class="filter-select">
+                    <option value="old" {% if request.args.get('sort','old')=='old' %}selected{% endif %}>Deadline (Earliest)</option>
+                    <option value="new" {% if request.args.get('sort')=='new' %}selected{% endif %}>Deadline (Latest)</option>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label class="label">Priority</label>
-            <select name="priority" class="input">
-                <option value="" {% if not priority_filter %}selected{% endif %}>Any</option>
-                <option value="High" {% if priority_filter=='High' %}selected{% endif %}>High</option>
-                <option value="Medium" {% if priority_filter=='Medium' %}selected{% endif %}>Medium</option>
-                <option value="Low" {% if priority_filter=='Low' %}selected{% endif %}>Low</option>
-            </select>
-        </div>
+            <div class="filter-group">
+                <label class="filter-label">🏷️ Tag</label>
+                <input name="tag" class="filter-input" value="{{ tag_search }}" placeholder="Search by tag">
+            </div>
 
-        <div class="form-group">
-            <label class="label">Tag</label>
-            <input name="tag" class="input" value="{{ tag_search }}" placeholder="search tag">
-        </div>
-
-        <button type="submit" class="btn primary large">Apply</button>
-    </form>
+            <button type="submit" class="btn-apply-filter">Apply Filters</button>
+        </form>
+    </div>
 
 
     <!-- TASK LIST -->
-    <h2 class="section-title">Your Tasks</h2>
-
-    {% if tasks %}
-        <div class="task-list">
-            {% for t in tasks %}
-
-                {% if t.status == 'done' %}
-                    {% set border_class = "task-done" %}
-                {% elif t.is_overdue %}
-                    {% set border_class = "task-overdue" %}
-                {% else %}
-                    {% set border_class = "task-pending" %}
-                {% endif %}
-
-                <div class="task-card {{ border_class }}" data-task-id="{{ t.id }}">
-
-                    <!-- LEFT SIDE -->
-                        <div class="task-info">
-                            <div class="task-title">{{ t.title }}</div>
-                            <div class="task-desc">{{ t.description or '' }}</div>
-                            <div style="margin-top:8px">
-                                <strong>Priority:</strong> <span class="priority">{{ t.priority or 'Medium' }}</span>
-                            </div>
-                                    {% if t._tags_list %}
-                                    <div style="margin-top:6px">
-                                        {% for tg in t._tags_list %}
-                                            <span class="tag-pill">{{ tg }}</span>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                        </div>
-
-                    <!-- MIDDLE -->
-                    <div class="task-meta">
-                        <div><strong>Due:</strong> {{ t.deadline.strftime('%Y-%m-%d %H:%M') }}</div>
-
-                        {# pill color: overdue gets its own style, otherwise based on status #}
-                        <div class="status-pill {% if t.is_overdue %}overdue{% else %}{{ t.status }}{% endif %}">
-                            {% if t.is_overdue %}
-                                Overdue
-                            {% else %}
-                                {{ t.status|capitalize }}
-                            {% endif %}
-                        </div>
-
-                        {% if t.time_left %}
-                            <div class="meta-small">{{ t.time_left }}</div>
-                        {% endif %}
-                    </div>
-
-                    <!-- RIGHT SIDE -->
-                    <div class="task-actions">
-
-                        <!-- MARK DONE / MARK PENDING -->
-                        <form method="POST" action="{{ url_for('toggle_task', task_id=t.id) }}">
-                            <input type="hidden" name="next" value="{{ request.full_path }}">
-                            {% if t.status == 'done' %}
-                                <button class="btn yellow small">Mark Pending</button>
-                            {% else %}
-                                <button class="btn green small">Mark Done</button>
-                            {% endif %}
-                        </form>
-
-                        <a class="btn blue small" href="{{ url_for('edit_task', task_id=t.id, next=request.full_path) }}">Edit</a>
-
-                                                <form method="POST"
-                                                            action="{{ url_for('delete_task', task_id=t.id) }}"
-                                                            onsubmit="return confirm('Are you sure you want to delete this task?');">
-                                                        <input type="hidden" name="next" value="{{ request.full_path }}">
-                                                        <button class="btn red small">Delete</button>
-                                                </form>
-
-                    </div>
-                </div>
-
-            {% endfor %}
+    <div class="tasks-list-section">
+        <div class="list-header">
+            <h2 class="list-title">📋 Your Tasks ({{ tasks|length }})</h2>
         </div>
 
-    {% else %}
-        <p>No tasks yet.</p>
-    {% endif %}
+        {% if tasks %}
+            <div class="task-grid">
+                {% for t in tasks %}
+
+                    {% if t.status == 'done' %}
+                        {% set card_class = "completed" %}
+                        {% set status_icon = "✅" %}
+                    {% elif t.is_overdue %}
+                        {% set card_class = "overdue" %}
+                        {% set status_icon = "🔥" %}
+                    {% else %}
+                        {% set card_class = "pending" %}
+                        {% set status_icon = "⏳" %}
+                    {% endif %}
+
+                    <div class="modern-task-card {{ card_class }}" data-task-id="{{ t.id }}">
+                        <div class="task-card-header">
+                            <div class="task-status-badge {{ card_class }}">
+                                {{ status_icon }}
+                                {% if t.is_overdue %}
+                                    Overdue
+                                {% else %}
+                                    {{ t.status|capitalize }}
+                                {% endif %}
+                            </div>
+                            
+                            <div class="task-priority-badge {{ t.priority|lower if t.priority else 'medium' }}">
+                                {% if t.priority == 'High' %}🔴{% elif t.priority == 'Low' %}🟢{% else %}🟡{% endif %}
+                                {{ t.priority or 'Medium' }}
+                            </div>
+                        </div>
+
+                        <div class="task-card-body">
+                            <h3 class="task-card-title">{{ t.title }}</h3>
+                            {% if t.description %}
+                                <p class="task-card-description">{{ t.description }}</p>
+                            {% endif %}
+                            
+                            <div class="task-deadline-info">
+                                <span class="deadline-icon">📅</span>
+                                <span class="deadline-text">{{ t.deadline.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                            </div>
+                            
+                            {% if t.time_left %}
+                                <div class="time-remaining {{ 'warning' if t.is_overdue else '' }}">
+                                    ⏱️ {{ t.time_left }}
+                                </div>
+                            {% endif %}
+
+                            {% if t._tags_list %}
+                                <div class="task-tags">
+                                    {% for tg in t._tags_list %}
+                                        <span class="modern-tag">🏷️ {{ tg }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="task-card-actions">
+                            <form method="POST" action="{{ url_for('toggle_task', task_id=t.id) }}" data-preserve-scroll="true" style="display: inline;">
+                                {{ form.hidden_tag() }}
+                                <input type="hidden" name="next" value="{{ request.full_path }}">
+                                {% if t.status == 'done' %}
+                                    <button class="action-btn secondary">↩️ Reopen</button>
+                                {% else %}
+                                    <button class="action-btn success">✓ Complete</button>
+                                {% endif %}
+                            </form>
+
+                            <a class="action-btn info ajax-edit" href="{{ url_for('edit_task', task_id=t.id, next=request.full_path) }}">✏️ Edit</a>
+
+                            <form method="POST"
+                                  action="{{ url_for('delete_task', task_id=t.id) }}"
+                                  onsubmit="return confirm('Delete this task?');"
+                                  data-preserve-scroll="true"
+                                  style="display: inline;">
+                                {{ form.hidden_tag() }}
+                                <input type="hidden" name="next" value="{{ request.full_path }}#task-{{ t.id }}">
+                                <button class="action-btn danger">🗑️ Delete</button>
+                            </form>
+                        </div>
+                    </div>
+
+                {% endfor %}
+            </div>
+
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📝</div>
+                <h3>No tasks found</h3>
+                <p>Create your first task to get started!</p>
+                <button class="btn-new-task" onclick="toggleTaskForm()">
+                    <span class="plus-icon">+</span> Create Task
+                </button>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- AJAX Edit Modal -->
+    <div id="ajaxModal" class="ajax-modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:1000;">
+        <div id="ajaxModalContent" style="background:white; padding:24px; border-radius:8px; max-width:600px; width:90%; max-height:80vh; overflow:auto;"></div>
+    </div>
 
 </div>
+
+<!-- Floating Action Button -->
+<button class="fab" id="fabButton" onclick="toggleTaskForm()" title="Add New Task">
+    +
+</button>
 
 {% endblock %}
 
@@ -176,50 +233,348 @@
 
 <style>
 
-.page-title {
-    font-size: 32px;
-    font-weight: 800;
-    margin-bottom: 25px;
-    color: #111;
-}
-
-.section-title {
-    font-size: 24px;
-    margin-top: 35px;
-    margin-bottom: 12px;
-    font-weight: 700;
-    color: #064e3b;
-}
-
-/* FORM */
-.form-box {
-    background: #f9fafb;
-    padding: 18px;
-    border-radius: 10px;
-    margin-bottom: 30px;
-}
-
-.form-row {
+/* Header */
+.tasks-header {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
     gap: 20px;
     flex-wrap: wrap;
 }
 
-.form-group {
-    flex: 1;
-    min-width: 200px;
+.page-title {
+    font-size: 36px;
+    font-weight: 800;
+    margin: 0;
+    color: #111827;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
-.label {
+.subtitle {
+    color: #6b7280;
+    font-size: 16px;
+    margin-top: 5px;
+}
+
+.btn-new-task {
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
     font-weight: 600;
-    margin-bottom: 5px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.input {
+.btn-new-task:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-new-task:active {
+    transform: translateY(0);
+}
+
+.plus-icon {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Floating Action Button */
+.fab {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 32px;
+    font-weight: 300;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.fab:hover {
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+}
+
+.fab:active {
+    transform: scale(1.05) rotate(90deg);
+}
+
+.fab.active {
+    transform: rotate(45deg);
+}
+
+.fab.active:hover {
+    transform: scale(1.1) rotate(45deg);
+}
+
+@media (max-width: 768px) {
+    .fab {
+        bottom: 20px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        font-size: 28px;
+    }
+}
+
+/* Form Helper */
+.form-helper {
+    background: linear-gradient(135deg, #e0e7ff 0%, #e0f2fe 100%);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 2px dashed #667eea;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.95;
+        transform: scale(1.01);
+    }
+}
+
+.helper-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    justify-content: center;
+}
+
+.helper-icon {
+    font-size: 24px;
+}
+
+.helper-text {
+    color: #4338ca;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.helper-text strong {
+    color: #3730a3;
+    font-weight: 700;
+}
+
+/* Form Helper */
+.form-helper {
+    background: linear-gradient(135deg, #e0e7ff 0%, #e0f2fe 100%);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 2px dashed #667eea;
+    animation: gentlePulse 2s ease-in-out infinite;
+}
+
+@keyframes gentlePulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.95;
+        transform: scale(1.01);
+    }
+}
+
+.helper-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    justify-content: center;
+}
+
+.helper-icon {
+    font-size: 24px;
+}
+
+.helper-text {
+    color: #4338ca;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.helper-text strong {
+    color: #3730a3;
+    font-weight: 700;
+}
+
+/* Form Container */
+.form-container {
+    background: white;
+    padding: 28px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    border: 2px solid #e0e7ff;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.form-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.close-btn {
+    font-size: 32px;
+    color: #9ca3af;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.modern-form {
+    /* Form styles */
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.modern-label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #374151;
+    font-size: 14px;
+}
+
+.modern-input,
+.modern-textarea {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 15px;
+    transition: all 0.2s;
+}
+
+.modern-input:focus,
+.modern-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.modern-textarea {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 2px solid #f3f4f6;
+}
+
+.btn-cancel {
+    padding: 12px 24px;
+    background: #f3f4f6;
+    color: #374151;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.btn-submit {
+    padding: 12px 32px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    transition: all 0.2s;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
 }
 
 /* BUTTONS */
@@ -264,114 +619,661 @@
     height: 43px;
 }
 
-/* FILTER */
-.filter-row {
+/* Filters */
+.filters-section {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    border: 2px solid #f3f4f6;
+}
+
+.filter-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 20px;
     display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    align-items: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #374151;
+    font-size: 14px;
+}
+
+.filter-select,
+.filter-input {
+    padding: 10px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: all 0.2s;
+    background: white;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.btn-apply-filter {
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: fit-content;
+}
+
+.btn-apply-filter:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Task List Section */
+.tasks-list-section {
+    margin-top: 30px;
+}
+
+.list-header {
     margin-bottom: 20px;
 }
 
-/* TASK CARDS */
-.task-list {
+.list-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.task-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 24px;
+}
+
+.modern-task-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    border: 2px solid transparent;
+    transition: all 0.3s;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 16px;
 }
 
-.task-card {
-    background: white;
-    padding: 16px;
-    border-radius: 10px;
+.modern-task-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.modern-task-card.pending {
+    border-color: #fef3c7;
+    background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%);
+}
+
+.modern-task-card.completed {
+    border-color: #d1fae5;
+    background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%);
+}
+
+.modern-task-card.overdue {
+    border-color: #fecaca;
+    background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%);
+}
+
+.task-card-header {
     display: flex;
-    gap: 20px;
-    border-left: 6px solid transparent;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    flex-wrap: wrap;
-}
-
-.task-pending {
-    border-color: #fbbf24;
-}
-
-.task-done {
-    border-color: #10b981;
-}
-
-.task-overdue {
-    border-color: #dc2626;
-}
-
-.task-info {
-    flex: 2;
-}
-
-.task-title {
-    font-size: 18px;
-    font-weight: 700;
-}
-
-.task-desc {
-    margin-top: 4px;
-    color: #444;
-}
-
-.task-meta {
-    flex: 1;
-    min-width: 160px;
-}
-
-.meta-small {
-    margin-top: 5px;
-    font-size: 0.85rem;
-    color: #666;
-}
-
-.task-actions {
-    display: flex;
-    gap: 8px;
+    justify-content: space-between;
     align-items: center;
+    gap: 12px;
 }
 
-/* STATUS PILL */
-.status-pill {
-    display: inline-block;
-    padding: 4px 10px;
+.task-status-badge {
+    padding: 6px 14px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
-    text-transform: uppercase;
-    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.status-pill.pending {
-    background: #fde68a;
+.task-status-badge.pending {
+    background: #fef3c7;
     color: #92400e;
 }
 
-.status-pill.done {
-    background: #bbf7d0;
+.task-status-badge.completed {
+    background: #d1fae5;
     color: #065f46;
 }
 
-.status-pill.overdue {
+.task-status-badge.overdue {
     background: #fecaca;
     color: #991b1b;
 }
 
+.task-priority-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.task-priority-badge.high {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.task-priority-badge.medium {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.task-priority-badge.low {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.task-card-body {
+    flex: 1;
+}
+
+.task-card-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 8px;
+    line-height: 1.3;
+}
+
+.task-card-description {
+    color: #6b7280;
+    font-size: 14px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.task-deadline-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.deadline-icon {
+    font-size: 16px;
+}
+
+.deadline-text {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+}
+
+.time-remaining {
+    padding: 8px 12px;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.time-remaining.warning {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.task-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.modern-tag {
+    padding: 4px 10px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.task-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 16px;
+    border-top: 2px solid #f3f4f6;
+}
+
+.action-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.action-btn.success {
+    background: #10b981;
+    color: white;
+}
+
+.action-btn.success:hover {
+    background: #059669;
+}
+
+.action-btn.secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.action-btn.secondary:hover {
+    background: #e5e7eb;
+}
+
+.action-btn.info {
+    background: #3b82f6;
+    color: white;
+}
+
+.action-btn.info:hover {
+    background: #2563eb;
+}
+
+.action-btn.danger {
+    background: #ef4444;
+    color: white;
+}
+
+.action-btn.danger:hover {
+    background: #dc2626;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.empty-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    font-size: 24px;
+    color: #111827;
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    color: #6b7280;
+    margin-bottom: 24px;
+    font-size: 16px;
+}
+
+/* Responsive */
+@media(max-width: 1024px){
+    .task-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+@media(max-width: 768px){
+    .tasks-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .page-title {
+        font-size: 28px;
+    }
+    
+    .btn-new-task {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .filters-form {
+        grid-template-columns: 1fr;
+    }
+    
+    .task-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .task-card-actions {
+        flex-direction: column;
+    }
+    
+    .action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Status Pills */
+.status-pill {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s;
+}
+
+.status-pill:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.status-pill.pending {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #78350f;
+}
+
+.status-pill.done {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.status-pill.overdue {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
 .tag-pill {
-    display:inline-block;
-    background:#eef2ff;
-    color:#3730a3;
-    padding:4px 8px;
-    border-radius:999px;
-    font-size:12px;
-    margin-right:6px;
+    display: inline-block;
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    color: #3730a3;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 8px;
+    margin-bottom: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    transition: all 0.2s;
+}
+
+.tag-pill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
 }
 
 .priority { font-weight:700; color:#374151 }
 
+/* Modal Styles */
+#ajaxModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+#ajaxModalContent {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#ajaxModalContent .modern-card {
+    margin: 0;
+    box-shadow: none;
+}
+
+#ajaxModalContent .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 16px 16px 0 0;
+    margin: 0;
+}
+
+#ajaxModalContent .card-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+#ajaxModalContent .card-body {
+    padding: 24px;
+}
+
+#ajaxModalContent .form-actions {
+    background: #f9fafb;
+    padding: 16px 24px;
+    border-radius: 0 0 16px 16px;
+    margin: 0 -24px -24px -24px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    #ajaxModalContent {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    #ajaxModalContent .card-body {
+        padding: 16px;
+    }
+    
+    #ajaxModalContent .form-actions {
+        flex-direction: column;
+        padding: 12px 16px;
+        margin: 0 -16px -16px -16px;
+    }
+    
+    #ajaxModalContent .form-actions .btn {
+        width: 100%;
+    }
+}
+
 </style>
+
+<script>
+// Toggle Task Form
+function toggleTaskForm() {
+    const formContainer = document.getElementById('taskFormContainer');
+    const formHelper = document.getElementById('formHelper');
+    const fabButton = document.getElementById('fabButton');
+    
+    if (formContainer.style.display === 'none') {
+        // Show form
+        formContainer.style.display = 'block';
+        if (formHelper) formHelper.style.display = 'none';
+        if (fabButton) fabButton.classList.add('active');
+        
+        // Smooth scroll to form
+        setTimeout(() => {
+            formContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+        
+        // Focus on title input
+        setTimeout(() => {
+            const titleInput = document.querySelector('#taskFormContainer input[name="title"]');
+            if (titleInput) titleInput.focus();
+        }, 400);
+    } else {
+        // Hide form
+        formContainer.style.display = 'none';
+        if (formHelper) formHelper.style.display = 'block';
+        if (fabButton) fabButton.classList.remove('active');
+    }
+}
+
+// AJAX Edit functionality for tasks
+function attachAjaxEdit(){
+    document.querySelectorAll('.ajax-edit').forEach(a=>{
+        a.removeEventListener('click', ajaxEditHandler);
+        a.addEventListener('click', ajaxEditHandler);
+    });
+}
+
+function closeModal(){
+    const modal = document.getElementById('ajaxModal');
+    modal.style.display = 'none';
+    document.getElementById('ajaxModalContent').innerHTML = '';
+}
+
+async function ajaxEditHandler(e){
+    e.preventDefault();
+    const href = e.currentTarget.href;
+    const url = href + (href.includes('?') ? '&ajax=1' : '?ajax=1');
+    try{
+        const res = await fetch(url, { credentials: 'same-origin' });
+        if(!res.ok) throw new Error('Network error');
+        const html = await res.text();
+        const modal = document.getElementById('ajaxModal');
+        const content = document.getElementById('ajaxModalContent');
+        content.innerHTML = html;
+        modal.style.display = 'flex';
+
+        const cancelBtn = document.getElementById('ajax-edit-cancel');
+        if(cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+        const form = document.getElementById('ajax-edit-task-form');
+        if(form){
+            form.addEventListener('submit', async function(ev){
+                ev.preventDefault();
+                const fd = new FormData(form);
+                try{
+                    const postRes = await fetch(form.action + (form.action.includes('?') ? '&ajax=1' : '?ajax=1'), {
+                        method: 'POST',
+                        body: fd,
+                        credentials: 'same-origin',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const data = await postRes.json();
+                    if(data && data.success){
+                        closeModal();
+                        window.location.reload();
+                    } else {
+                        window.location.reload();
+                    }
+                }catch(err){
+                    console.error('AJAX edit submit failed', err);
+                    window.location.reload();
+                }
+            });
+        }
+
+    }catch(err){
+        console.error('Failed to load edit form', err);
+        window.location.href = href;
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('ajaxModal');
+    if (e.target === modal) {
+        closeModal();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+    attachAjaxEdit();
+    
+    // Save scroll position before form submission
+    document.querySelectorAll('form[data-preserve-scroll]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('scrollPosition', window.scrollY);
+        });
+    });
+    
+    // Restore scroll position after page load
+    const savedScrollPosition = sessionStorage.getItem('scrollPosition');
+    if (savedScrollPosition) {
+        window.scrollTo(0, parseInt(savedScrollPosition));
+        sessionStorage.removeItem('scrollPosition');
+    }
+});
+</script>
 
 {% endblock %}

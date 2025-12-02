@@ -1,146 +1,202 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1 class="page-title">BUDGET MANAGEMENT</h1>
+<div class="budgets-header">
+    <div>
+        <h1 class="page-title">💰 Budget Management</h1>
+        <p class="subtitle">Track your income and expenses efficiently</p>
+    </div>
+    <button class="btn-new-transaction" onclick="toggleTransactionForm()">
+        <span class="plus-icon">+</span> New Transaction
+    </button>
+</div>
 
 <div class="budget-panel">
 
-    <!-- ADD TRANSACTION -->
-    <h2 class="section-title">Add a New Transaction</h2>
-
-    <form method="POST" action="{{ url_for('create_budget') }}" class="form-box">
-        {{ form.hidden_tag() }}
-
-        <div class="form-row">
-            <div class="form-group">
-                {{ form.category.label(class="label") }}
-                {{ form.category(class="input") }}
-            </div>
-
-            <div class="form-group">
-                <label id="custom-cat-label" class="label" style="display:none;">Custom Category</label>
-                <input id="custom-cat" name="custom_category" type="text" class="input"
-                       placeholder="Enter custom category" style="display:none;">
-            </div>
-
-            <div class="form-group">
-                {{ form.amount.label(class="label") }}
-                {{ form.amount(step="0.01", class="input") }}
-            </div>
-
-            <div class="form-group">
-                {{ form.type.label(class="label") }}
-                {{ form.type(class="input") }}
-            </div>
-
-            <div class="form-group">
-                {{ form.date.label(class="label") }}
-                <input type="date" name="date" class="input">
-            </div>
-        </div>
-
-        <button class="btn primary large">Add Transaction</button>
-    </form>
-
-
-    <!-- SUMMARY -->
-    <h2 class="section-title">Your Summary</h2>
-
-    <div class="summary-grid">
-        <div class="summary-box">
-            <div class="label">Total Income</div>
-            <div class="value">{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(incomes) }}</div>
-        </div>
-
-        <div class="summary-box">
-            <div class="label">Total Expenses</div>
-            <div class="value">{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(expenses) }}</div>
-        </div>
-
-        <div class="summary-box">
-            <div class="label">Balance</div>
-            <div class="value balance">{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(balance) }}</div>
+    <!-- Helper message when form is hidden -->
+    <div id="formHelper" class="form-helper">
+        <div class="helper-content">
+            <span class="helper-icon">💡</span>
+            <span class="helper-text">Click the <strong>"+New Transaction"</strong> button above or the <strong>floating button</strong> in the bottom-right corner to add a transaction!</span>
         </div>
     </div>
 
-    <div style="margin-top:8px; font-size:0.95rem; color:#374151">
-        Summary is based on filters applied below
+    <!-- ADD TRANSACTION (Initially Hidden) -->
+    <div id="transactionFormContainer" class="form-container" style="display: none;">
+        <div class="form-header">
+            <h2 class="form-title">✨ Add New Transaction</h2>
+            <button class="close-btn" onclick="toggleTransactionForm()">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('create_budget') }}" class="modern-form">
+            {{ form.hidden_tag() }}
+
+            <div class="form-grid">
+                <div class="form-group">
+                    {{ form.category.label(class="modern-label") }}
+                    {{ form.category(class="modern-input") }}
+                </div>
+
+                <div class="form-group" id="customCatGroup" style="display:none;">
+                    <label id="custom-cat-label" class="modern-label">Custom Category</label>
+                    <input id="custom-cat" name="custom_category" type="text" class="modern-input"
+                           placeholder="Enter custom category">
+                </div>
+
+                <div class="form-group">
+                    {{ form.amount.label(class="modern-label") }}
+                    {{ form.amount(step="0.01", class="modern-input", placeholder="0.00") }}
+                </div>
+
+                <div class="form-group">
+                    {{ form.type.label(class="modern-label") }}
+                    {{ form.type(class="modern-input") }}
+                </div>
+
+                <div class="form-group">
+                    {{ form.date.label(class="modern-label") }}
+                    <input type="date" name="date" class="modern-input">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="toggleTransactionForm()">Cancel</button>
+                <button type="submit" class="btn-submit">✓ Add Transaction</button>
+            </div>
+        </form>
+    </div>
+
+
+    <!-- SUMMARY -->
+    <div class="modern-section-header">
+        <h2 class="section-gradient-title">📊 Financial Summary</h2>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card income">
+            <div class="summary-icon">💵</div>
+            <div class="summary-content">
+                <div class="summary-label">Total Income</div>
+                <div class="summary-value">{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(incomes) }}</div>
+            </div>
+        </div>
+
+        <div class="summary-card expense">
+            <div class="summary-icon">💸</div>
+            <div class="summary-content">
+                <div class="summary-label">Total Expenses</div>
+                <div class="summary-value">{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(expenses) }}</div>
+            </div>
+        </div>
+
+        <div class="summary-card balance {{ 'positive' if balance >= 0 else 'negative' }}">
+            <div class="summary-icon">{{ '✅' if balance >= 0 else '⚠️' }}</div>
+            <div class="summary-content">
+                <div class="summary-label">Balance</div>
+                <div class="summary-value">{{ '$' if currency=='USD' else '₹' }}{{ '%.2f'|format(balance) }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-note">
+        💡 Summary is based on filters applied below
     </div>
 
 
     <!-- FILTERS -->
-    <h2 class="section-title">Filter Transactions</h2>
+    <div class="modern-section-header">
+        <h2 class="section-gradient-title">🔍 Filter & Export</h2>
+    </div>
 
-    <form method="GET" class="filter-row">
+    <div class="filters-card">
+        <form method="GET" class="filter-form-wrapper">
+            <div class="filter-row">
+                <div class="form-group">
+                    <label class="modern-label">📅 From Date</label>
+                    <input type="date" name="from_date" class="modern-input"
+                           value="{{ request.args.get('from_date','') }}">
+                </div>
 
-        <div class="form-group">
-            <label class="label">From</label>
-            <input type="date" name="from_date" class="input"
-                   value="{{ request.args.get('from_date','') }}">
-        </div>
+                <div class="form-group">
+                    <label class="modern-label">📅 To Date</label>
+                    <input type="date" name="to_date" class="modern-input"
+                           value="{{ request.args.get('to_date','') }}">
+                </div>
 
-        <div class="form-group">
-            <label class="label">To</label>
-            <input type="date" name="to_date" class="input"
-                   value="{{ request.args.get('to_date','') }}">
-        </div>
-
-        <div class="form-group" style="display:flex; align-items:flex-end; gap:10px;">
-            <button type="submit" class="btn primary large">Apply</button>
-            
-            <!-- Download dropdown -->
-            <div class="download-container">
-                <button type="button" class="btn secondary large" id="downloadBtn">
-                    Download ▼
-                </button>
-
-                <div id="downloadMenu" class="download-menu">
-                    <a href="{{ url_for('export_budgets',
-                            from_date=request.args.get('from_date',''),
-                            to_date=request.args.get('to_date',''),
-                            format='csv') }}">
-                        Export as CSV
-                    </a>
-                    <a href="{{ url_for('export_budgets',
-                            from_date=request.args.get('from_date',''),
-                            to_date=request.args.get('to_date',''),
-                            format='xlsx') }}">
-                        Export as Excel
-                    </a>
+                <div class="form-group">
+                    <label class="modern-label" style="visibility: hidden;">Action</label>
+                    <button type="submit" class="btn-apply-filter">✓ Apply Filters</button>
                 </div>
             </div>
-        </div>
 
-    </form>
+            <!-- Download section below -->
+            <div class="download-section">
+                <div class="download-container">
+                    <button type="button" class="btn-download" id="downloadBtn">
+                        📥 Download ▼
+                    </button>
+
+                    <div id="downloadMenu" class="download-menu">
+                        <a href="{{ url_for('export_budgets',
+                                from_date=request.args.get('from_date',''),
+                                to_date=request.args.get('to_date',''),
+                                format='csv') }}">
+                            📄 Export as CSV
+                        </a>
+                        <a href="{{ url_for('export_budgets',
+                                from_date=request.args.get('from_date',''),
+                                to_date=request.args.get('to_date',''),
+                                format='xlsx') }}">
+                            📊 Export as Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
 
 
     <!-- CATEGORY ANALYSIS -->
-    <h2 class="section-title">Spending by Category</h2>
+    <div class="modern-section-header">
+        <h2 class="section-gradient-title">📈 Spending Analysis</h2>
+    </div>
 
     {% if breakdown %}
-    <div class="chart-flex">
+    <div class="chart-grid">
 
-        <div class="chart-card">
-            <canvas id="categoryPie"></canvas>
+        <div class="modern-chart-card">
+            <h3 class="chart-title">📊 Distribution</h3>
+            <div class="chart-wrapper">
+                <canvas id="categoryPie"></canvas>
+            </div>
         </div>
 
-        <div class="legend-card">
-            <h3 class="legend-title">Categories</h3>
-            <ul id="chartLegend"></ul>
+        <div class="modern-chart-card legend-card">
+            <h3 class="chart-title">🏷️ Categories</h3>
+            <ul id="chartLegend" class="chart-legend"></ul>
         </div>
 
-        <div class="chart-card">
-            <canvas id="expenseBar"></canvas>
+        <div class="modern-chart-card">
+            <h3 class="chart-title">📊 By Category</h3>
+            <div class="chart-wrapper">
+                <canvas id="expenseBar"></canvas>
+            </div>
         </div>
 
     </div>
     {% else %}
-    <p>No category data available.</p>
+    <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <h3>No category data available</h3>
+        <p>Add transactions to see spending analysis</p>
+    </div>
     {% endif %}
 
 
     <!-- TABLE -->
-    <h2 class="section-title">Your Transaction History</h2>
+    <div class="modern-section-header">
+        <h2 class="section-gradient-title">📋 Transaction History</h2>
+    </div>
 
     {% set _table_url = request.full_path.replace('ajax=1','') %}
     {% if _table_url.endswith('?') or _table_url.endswith('&') %}
@@ -158,6 +214,11 @@
 
 </div>
 
+<!-- Floating Action Button -->
+<button class="fab" id="fabButton" onclick="toggleTransactionForm()" title="Add New Transaction">
+    +
+</button>
+
 {% endblock %}
 
 {% block scripts %}
@@ -165,216 +226,800 @@
 
 <style>
 
-/* HEADINGS */
-.page-title {
-    font-size: 32px;
-    font-weight: 800;
-    margin-bottom: 25px;
-    color: #111;
-}
-
-.section-title {
-    font-size: 24px;
-    margin-top: 35px;
-    margin-bottom: 12px;
-    font-weight: 700;
-    color: #064e3b;
-}
-
-
-/* FORM */
-.form-box {
-    background: #f9fafb;
-    padding: 18px;
-    border-radius: 10px;
-    margin-bottom: 30px;
-}
-
-.form-row {
+/* HEADER */
+.budgets-header {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    gap: 20px;
     flex-wrap: wrap;
+}
+
+.page-title {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.subtitle {
+    color: #6b7280;
+    font-size: 16px;
+    margin-top: 4px;
+}
+
+.btn-new-transaction {
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-new-transaction:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.btn-new-transaction:active {
+    transform: translateY(0);
+}
+
+.plus-icon {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Floating Action Button */
+.fab {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 32px;
+    font-weight: 300;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.fab:hover {
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5);
+}
+
+.fab:active {
+    transform: scale(1.05) rotate(90deg);
+}
+
+.fab.active {
+    transform: rotate(45deg);
+}
+
+.fab.active:hover {
+    transform: scale(1.1) rotate(45deg);
+}
+
+/* Modern Section Headers */
+.modern-section-header {
+    margin: 40px 0 20px 0;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border-radius: 12px;
+    border-left: 4px solid #10b981;
+}
+
+.section-gradient-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+
+/* Form Helper */
+.form-helper {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 2px dashed #10b981;
+    animation: gentlePulse 2s ease-in-out infinite;
+}
+
+@keyframes gentlePulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.95;
+        transform: scale(1.01);
+    }
+}
+
+.helper-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    justify-content: center;
+}
+
+.helper-icon {
+    font-size: 24px;
+}
+
+.helper-text {
+    color: #065f46;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.helper-text strong {
+    color: #047857;
+    font-weight: 700;
+}
+
+/* Form Container */
+.form-container {
+    background: white;
+    padding: 28px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    border: 2px solid #d1fae5;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.form-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.close-btn {
+    font-size: 32px;
+    color: #9ca3af;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.modern-form {
+    /* Modern form styles */
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
 }
 
 .form-group {
-    flex: 1;
-    min-width: 160px;
+    display: flex;
+    flex-direction: column;
 }
 
-.label {
+.modern-label {
     font-weight: 600;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
+    color: #374151;
+    font-size: 14px;
 }
 
-.input {
+.modern-input,
+.modern-textarea,
+.modern-select {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 15px;
+    transition: all 0.2s;
+    background: white;
+}
+
+.modern-input:focus,
+.modern-textarea:focus,
+.modern-select:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    justify-content: flex-end;
+}
+
+.btn-cancel {
+    padding: 12px 24px;
+    background: #f3f4f6;
+    color: #374151;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.btn-submit {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
 
 /* BUTTONS */
 .btn {
     padding: 10px 18px;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     border: none;
     font-weight: 600;
+    transition: all 0.2s;
 }
 
 .primary {
-    background: #059669;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: white;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .secondary {
     background: #f3f4f6;
     border: 1px solid #d1d5db;
+    color: #374151;
+}
+
+.secondary:hover {
+    background: #e5e7eb;
+}
+
+.small {
+    padding: 6px 12px;
+    font-size: 13px;
 }
 
 .large {
-    height: 43px;
+    padding: 12px 24px;
+    font-size: 15px;
 }
 
 .danger {
-    background: #dc2626;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+.danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 
-/* SUMMARY */
+/* SUMMARY CARDS */
 .summary-grid {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
-    flex-wrap: wrap;
+    margin-bottom: 20px;
 }
 
-.summary-box {
-    background: #ecfdf5;
-    border: 1px solid #a7f3d0;
-    padding: 15px;
+.summary-card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-left: 4px solid;
+}
+
+.summary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+}
+
+.summary-card.income {
+    border-left-color: #10b981;
+}
+
+.summary-card.expense {
+    border-left-color: #ef4444;
+}
+
+.summary-card.balance.positive {
+    border-left-color: #10b981;
+}
+
+.summary-card.balance.negative {
+    border-left-color: #f59e0b;
+}
+
+.summary-icon {
+    font-size: 40px;
+    line-height: 1;
+}
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #111827;
+}
+
+.filter-note {
+    font-size: 14px;
+    color: #6b7280;
+    padding: 12px 20px;
+    background: #f9fafb;
     border-radius: 8px;
-    width: 170px;
-}
-
-.summary-box .value {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #065f46;
+    text-align: center;
+    margin-bottom: 20px;
 }
 
 
 
-/* FILTERS */
-.filter-row {
+/* FILTERS CARD */
+.filters-card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
+
+.filter-form-wrapper {
     display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 20px;
-    flex-wrap: wrap;
-    align-items: flex-end;
+    align-items: end;
+}
+
+.download-section {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.btn-apply-filter {
+    width: 100%;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    white-space: nowrap;
+}
+
+.btn-apply-filter:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-download {
+    padding: 12px 24px;
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-download:hover {
+    background: #e5e7eb;
 }
 
 /* DOWNLOAD */
 .download-container {
     position: relative;
+    display: inline-block;
 }
 
 .download-menu {
-    display:none;
-    position:absolute;
-    top:46px;
-    right:0;
-    background:white;
-    border:1px solid #ccc;
-    border-radius:8px;
-    min-width:160px;
-    box-shadow:0px 4px 10px rgba(0,0,0,0.1);
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    min-width: 200px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    z-index: 100;
+    overflow: hidden;
 }
 
 .download-menu a {
-    padding:10px;
-    display:block;
-    text-decoration:none;
-    color:#111;
+    padding: 12px 16px;
+    display: block;
+    text-decoration: none;
+    color: #374151;
+    transition: all 0.2s;
+    font-size: 14px;
 }
 
 .download-menu a:hover {
-    background:#f3f4f6;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #059669;
 }
 
 
 
 /* CHARTS */
-.chart-flex {
-    display: flex;
-    gap: 30px;
-    flex-wrap: wrap;
-    justify-content: center;
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-bottom: 30px;
 }
 
-.chart-card {
-    flex: 1;
-    min-width: 250px;
-    max-width: 350px;
-    height: 270px;
+.modern-chart-card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-chart-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+}
+
+.chart-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #111827;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.chart-wrapper {
+    height: 250px;
+    position: relative;
 }
 
 .legend-card {
-    min-width: 170px;
+    display: flex;
+    flex-direction: column;
 }
 
-.legend-title {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 10px;
+.chart-legend {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
-#chartLegend li {
+.chart-legend li {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s;
 }
 
-#chartLegend span {
-    width: 14px;
-    height: 14px;
-    border-radius: 3px;
-    margin-right: 8px;
+.chart-legend li:hover {
+    background: #f9fafb;
+}
+
+.chart-legend span {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    margin-right: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.empty-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    font-size: 24px;
+    color: #111827;
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    color: #6b7280;
+    margin-bottom: 24px;
+    font-size: 16px;
 }
 
 
 /* TABLE */
-.transaction-table th {
-    background: #f3f4f6;
+.table-wrapper {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
-.transaction-table td,
+.transaction-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
 .transaction-table th {
-    padding: 14px;
-    border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #065f46;
+    font-weight: 700;
+    text-align: left;
+    padding: 16px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.transaction-table td {
+    padding: 16px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #374151;
+}
+
+.transaction-table tbody tr {
+    transition: all 0.2s;
+}
+
+.transaction-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.table-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.pagination-controls {
+    display: flex;
+    gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .budgets-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .btn-new-transaction {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .fab {
+        bottom: 20px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        font-size: 28px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-row {
+        grid-template-columns: 1fr;
+    }
+
+    .download-section {
+        justify-content: stretch;
+    }
+
+    .download-container {
+        width: 100%;
+    }
+
+    .btn-download {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn-cancel,
+    .btn-submit {
+        width: 100%;
+    }
 }
 
 </style>
 
 <script>
+// Toggle Transaction Form
+function toggleTransactionForm() {
+    const formContainer = document.getElementById('transactionFormContainer');
+    const formHelper = document.getElementById('formHelper');
+    const fabButton = document.getElementById('fabButton');
+    
+    if (formContainer.style.display === 'none') {
+        // Show form
+        formContainer.style.display = 'block';
+        if (formHelper) formHelper.style.display = 'none';
+        if (fabButton) fabButton.classList.add('active');
+        
+        // Smooth scroll to form
+        setTimeout(() => {
+            formContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+        
+        // Focus on category input
+        setTimeout(() => {
+            const categoryInput = document.querySelector('#transactionFormContainer select[name="category"]');
+            if (categoryInput) categoryInput.focus();
+        }, 400);
+    } else {
+        // Hide form
+        formContainer.style.display = 'none';
+        if (formHelper) formHelper.style.display = 'block';
+        if (fabButton) fabButton.classList.remove('active');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function(){
 
     /* Custom Category */
     const sel = document.querySelector('select[name="category"]');
-    const custom = document.getElementById('custom-cat');
-    const customLabel = document.getElementById('custom-cat-label');
+    const customGroup = document.getElementById('customCatGroup');
 
     function toggleCustom(){
-        if(sel.value === 'Other'){
-            custom.style.display = 'block';
-            customLabel.style.display = 'block';
+        if(sel && sel.value === 'Other'){
+            if (customGroup) customGroup.style.display = 'flex';
         } else {
-            custom.style.display = 'none';
-            customLabel.style.display = 'none';
+            if (customGroup) customGroup.style.display = 'none';
         }
     }
-    sel.addEventListener("change", toggleCustom);
-    toggleCustom();
+    if (sel) {
+        sel.addEventListener("change", toggleCustom);
+        toggleCustom();
+    }
 
 
     /* DOWNLOAD MENU */
@@ -586,6 +1231,20 @@ async function ajaxPageHandler(e){
 document.addEventListener('DOMContentLoaded', function(){
     attachAjaxPagination();
     attachAjaxEdit();
+    
+    // Save scroll position before form submission
+    document.querySelectorAll('form[data-preserve-scroll]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('scrollPosition', window.scrollY);
+        });
+    });
+    
+    // Restore scroll position after page load
+    const savedScrollPosition = sessionStorage.getItem('scrollPosition');
+    if (savedScrollPosition) {
+        window.scrollTo(0, parseInt(savedScrollPosition));
+        sessionStorage.removeItem('scrollPosition');
+    }
 });
 </script>
 {% endblock %}

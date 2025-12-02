@@ -14,13 +14,22 @@ class RegisterForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email(), Length(max=150)])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     confirm = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
-    currency = SelectField('Preferred Currency', choices=[('USD','USD ($)'), ('INR','INR (₹)')], default='USD')
+    currency = SelectField('Preferred Currency', choices=[
+        ('USD', 'USD ($) - US Dollar'),
+        ('EUR', 'EUR (€) - Euro'),
+        ('GBP', 'GBP (£) - British Pound'),
+        ('INR', 'INR (₹) - Indian Rupee'),
+        ('JPY', 'JPY (¥) - Japanese Yen'),
+        ('AUD', 'AUD ($) - Australian Dollar'),
+        ('CAD', 'CAD ($) - Canadian Dollar'),
+        ('CNY', 'CNY (¥) - Chinese Yuan')
+    ], default='USD')
     submit = SubmitField('Register')
 
 
 class TaskForm(FlaskForm):
-    title = StringField('Title', validators=[DataRequired(), Length(max=100)])
-    description = TextAreaField('Description')
+    title = StringField('Title', validators=[DataRequired(), Length(min=1, max=100)])
+    description = TextAreaField('Description', validators=[Length(max=500)])
     
     deadline = DateTimeLocalField(
         'Deadline',
@@ -49,9 +58,9 @@ class BudgetForm(FlaskForm):
         validators=[DataRequired()]
     )
 
-    amount = DecimalField('Amount', places=2, validators=[DataRequired(), NumberRange(min=0)])
+    amount = DecimalField('Amount', places=2, validators=[DataRequired(), NumberRange(min=0.01, max=999999999.99)])
     type = SelectField('Type', choices=[('expense', 'Expense'), ('income', 'Income')], validators=[DataRequired()])
 
-    date = DateField('Date', format='%Y-%m-%d')  # NOW PROPER DATE FIELD
+    date = DateField('Date', format='%Y-%m-%d')
 
     submit = SubmitField('Add Transaction')
